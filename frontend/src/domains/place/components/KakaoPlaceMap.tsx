@@ -3,14 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { loadKakaoMaps } from '../lib/loadKakaoMaps';
 import { sameMapView } from '../lib/placeMapParams';
-import type { KakaoMap, KakaoMapsApi, KakaoOverlay, PlaceMapBounds, PlaceMapView } from '../types/kakaoMap.type';
-import type { SamplePlace } from '../types/samplePlace.type';
+import type { KakaoMap, KakaoMapsApi, KakaoOverlay, PlaceMapBounds, PlaceMapView, PlaceMapItem } from '../types/kakaoMap.type';
 import './KakaoPlaceMap.css';
 
 type MapContext = { api: KakaoMapsApi; map: KakaoMap };
 type Pin = { id: number; overlay: KakaoOverlay; button: HTMLButtonElement };
 
-function fitPlaces({ api, map }: MapContext, places: SamplePlace[]) {
+function fitPlaces({ api, map }: MapContext, places: PlaceMapItem[]) {
   if (places.length === 0) return;
   if (places.length === 1) {
     map.setCenter(new api.LatLng(places[0].latitude, places[0].longitude));
@@ -23,7 +22,7 @@ function fitPlaces({ api, map }: MapContext, places: SamplePlace[]) {
 }
 
 export default function KakaoPlaceMap({ places, selectedId, onSelect, onBoundsChange, view = null }: {
-  places: SamplePlace[];
+  places: PlaceMapItem[];
   selectedId: number | null;
   onSelect: (id: number) => void;
   onBoundsChange?: (bounds: PlaceMapBounds, view: PlaceMapView) => void;
@@ -170,8 +169,8 @@ export default function KakaoPlaceMap({ places, selectedId, onSelect, onBoundsCh
 
   return (
     <div className="outpick-mapStage">
-      <div ref={container} className="outpick-mapCanvas" role="region" aria-label="샘플 장소 지도" />
-      <p className="outpick-mapDisclaimer">샘플 위치 · 실제 시설 위치가 아닙니다</p>
+      <div ref={container} className="outpick-mapCanvas" role="region" aria-label="장소 지도" />
+      <p className="outpick-mapDisclaimer">현재 페이지의 장소 · 데모 좌표는 실제 시설 위치가 아닙니다</p>
       {!context && !error && <p className="outpick-mapMessage" role="status">지도를 불러오고 있어요.</p>}
       {error && (
         <div className="outpick-mapMessage" role="alert">

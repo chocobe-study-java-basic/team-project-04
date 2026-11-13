@@ -15,6 +15,9 @@
 .outpick-detailTags { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 24px; }
 .outpick-detailTags span { padding: 6px 10px; border-radius: 6px; background: #f3f2ff; color: #6156cc; font-size: 12px; }
 .outpick-detailShare { margin-top: 20px; }
+.outpick-notice { margin-top: 12px; padding: 16px; border: 1px solid #e9edf3; border-radius: 8px; font-size: 13px; }
+.outpick-notice h3 { font-weight: 700; }
+.outpick-notice p { margin-top: 8px; color: #718096; white-space: pre-wrap; line-height: 1.8; }
 .outpick-detailColumns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, .55fr); gap: 60px; align-items: start; }
 .outpick-detailSection { padding: 28px 0; border-top: 1px solid #e9edf3; }
 .outpick-detailSection h2, .outpick-visitInfo h2 { margin-bottom: 18px; font-size: 18px; font-weight: 700; }
