@@ -41,6 +41,7 @@ describe('샘플 장소 상세', () => {
       render(<PlaceDetail />);
       expect(screen.getByRole('heading', { name: '장소를 찾을 수 없어요' })).toBeTruthy();
       expect(screen.queryByRole('heading', { name: '장소 소개' })).toBeNull();
+      expect(screen.queryByRole('button', { name: '장소 링크 복사' })).toBeNull();
     }
   );
 });

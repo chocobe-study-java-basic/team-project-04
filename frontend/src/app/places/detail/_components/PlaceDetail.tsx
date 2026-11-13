@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import PlaceArtwork from '@/domains/place/components/PlaceArtwork';
+import CopyPlaceLinkButton from '@/domains/place/components/CopyPlaceLinkButton';
 import { samplePlaces } from '@/domains/place/data/samplePlaces';
 import { getListReturnUrl } from '@/domains/place/lib/placeNavigation';
 import './PlaceDetail.css';
@@ -38,6 +39,9 @@ export default function PlaceDetail() {
                 <h1>{place.name}</h1>
                 <p>{place.description}</p>
                 <div className="outpick-detailTags">{place.activities.map(activity => <span key={activity.name}>{activity.name}</span>)}</div>
+                <div className="outpick-detailShare">
+                  <CopyPlaceLinkButton label="장소 링크 복사" path={`/places/detail/?id=${place.id}`} />
+                </div>
               </div>
               <PlaceArtwork artwork={place.artwork} />
             </div>
