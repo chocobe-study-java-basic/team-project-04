@@ -6,6 +6,7 @@ import com.outpick.domain.place.entity.Place;
 import com.outpick.domain.place.entity.PlaceActivity;
 import com.outpick.domain.place.entity.PlaceActivitySeason;
 import com.outpick.domain.place.entity.PlaceNotice;
+import com.outpick.domain.place.entity.PlacePublishStatus;
 import com.outpick.domain.place.entity.Region;
 import com.outpick.domain.place.entity.SourceRecord;
 import com.outpick.domain.place.repository.PlaceRepository;
@@ -50,10 +51,11 @@ class PlacePersistenceTests {
     @Autowired PlatformTransactionManager transactionManager;
 
     @Test
-    @DisplayName("빈 MySQL에 V1을 적용하고 Hibernate 매핑과 실행 이력을 검증한다")
+    @DisplayName("빈 MySQL에 마이그레이션을 적용하고 Hibernate 매핑과 실행 이력을 검증한다")
     void migratesEmptyDatabase() {
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
         assertThat(flyway.info().pending()).isEmpty();
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2");
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '1' AND success = 1", Integer.class))
                 .isEqualTo(1);
@@ -88,8 +90,7 @@ class PlacePersistenceTests {
         assertThat(loaded.getRegion().getParent().getName()).isEqualTo("강원");
         assertThat(loaded.getLatitude()).isEqualByComparingTo("37.3700000");
         assertThat(loaded.getLongitude()).isEqualByComparingTo("128.3900000");
-        // 공개 상태의 숫자 의미는 아직 정하지 않았으므로 임의의 공개 기본값을 넣지 않는다.
-        assertThat(loaded.getPublishStatus()).isNull();
+        assertThat(loaded.getPublishStatus()).isEqualTo(PlacePublishStatus.DRAFT);
         assertThat(loaded.getOperationStatus()).isNull();
         assertThat(loaded.getVersion()).isEqualTo("source-v1");
         var loadedSeason = entityManager.find(PlaceActivitySeason.class, season.getId());
@@ -112,6 +113,21 @@ class PlacePersistenceTests {
         assertThat(loaded.getName()).isEqualTo("수정 후");
         assertThat(loaded.getIntroduce()).isEqualTo("변경된 소개");
         assertThat(loaded.getAddress()).isEqualTo("변경된 주소");
+    }
+
+    @Test
+    @DisplayName("게시 상태는 선언 순서가 아닌 약속한 숫자로 저장하고 복원한다")
+    void persistsPublishStatusCodes() {
+        var place = place(region(), "공개 상태 검증");
+        for (var status : PlacePublishStatus.values()) {
+            place.changePublishStatus(status);
+            entityManager.flush();
+            assertThat(jdbc.queryForObject("SELECT publish_status FROM place WHERE place_id = ?", Byte.class, place.getId()))
+                    .isEqualTo(status.getCode());
+            entityManager.clear();
+            place = places.findById(place.getId()).orElseThrow();
+            assertThat(place.getPublishStatus()).isEqualTo(status);
+        }
     }
 
     @Test

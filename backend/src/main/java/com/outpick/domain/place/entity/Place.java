@@ -1,6 +1,7 @@
 package com.outpick.domain.place.entity;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -54,8 +55,9 @@ public class Place {
     @Column(name = "homepage", length = 100)
     private String homepage;
 
-    @Column(name = "publish_status")
-    private Byte publishStatus;
+    @Convert(converter = PlacePublishStatusConverter.class)
+    @Column(name = "publish_status", nullable = false)
+    private PlacePublishStatus publishStatus = PlacePublishStatus.DRAFT;
 
     @Column(name = "operation_status", length = 20)
     private String operationStatus;
@@ -76,7 +78,7 @@ public class Place {
             BigDecimal latitude,
             BigDecimal longitude,
             String homepage,
-            Byte publishStatus,
+            PlacePublishStatus publishStatus,
             String operationStatus,
             String version,
             LocalDateTime reviewedAt) {
@@ -88,7 +90,7 @@ public class Place {
         this.latitude = latitude;
         this.longitude = longitude;
         this.homepage = homepage;
-        this.publishStatus = publishStatus;
+        this.publishStatus = publishStatus == null ? PlacePublishStatus.DRAFT : publishStatus;
         this.operationStatus = operationStatus;
         this.version = version;
         this.reviewedAt = reviewedAt;
@@ -98,5 +100,9 @@ public class Place {
         this.name = name;
         this.introduce = introduce;
         this.address = address;
+    }
+
+    public void changePublishStatus(PlacePublishStatus publishStatus) {
+        this.publishStatus = Objects.requireNonNull(publishStatus, "publishStatus");
     }
 }
