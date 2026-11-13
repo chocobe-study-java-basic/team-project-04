@@ -4,6 +4,21 @@ Next.js + TypeScript + Tailwind CSS 기반으로 정적 파일을 빌드한다. 
 
 현재는 개발 환경·레이아웃 예시와 TanStack Query 기반 조회 화면을 구성했다. Zustand 설치·Store 구현은 공유할 UI 상태가 확정될 때까지 보류한다.
 
+## 샘플 장소 탐색 화면
+
+`/`에서 가상 장소 데이터로 목록·검색·필터를 확인할 수 있다. 실제 장소 API·카카오맵·상세 페이지는 아직 연결하지 않았다.
+
+검색 조건은 URL의 `query`(장소명), `category`(활동 분류), `region`, `season`, `environment`, `sort`에 저장한다. 현재 값은 샘플 화면용 이름이며 향후 실제 API의 ID·코드 계약과 연결할 때 변환한다. 기본 조건은 주소에서 생략한다.
+
+- 예시: `/?region=강원&season=겨울`
+- 검색어는 검색 버튼 또는 Enter로 제출할 때 적용하고, 나머지 필터·정렬은 선택 즉시 적용한다.
+- 주소 복사·직접 접속·새로고침·뒤로/앞으로 가기로 적용된 조건을 복원한다.
+- 초기화는 검색 조건과 미제출 입력을 지우며, 이 화면이 소유하지 않는 쿼리와 해시는 보존한다.
+- 지원하지 않는 필터 값은 기본값으로 해석하고, 다음 조건 변경 때 URL을 정리한다.
+- 카드 선택·모바일 보기 전환·목록 스크롤 위치는 이번 URL 저장 범위에 포함하지 않는다.
+
+정적 내보내기를 유지하기 위해 `useSearchParams`를 사용하는 화면을 `Suspense`로 감싼다. URL 변경은 Next.js와 연동되는 [Native History API](https://nextjs.org/docs/app/getting-started/linking-and-navigating#native-history-api)를 사용하며, 조건 변경 시 화면 스크롤을 강제로 이동하지 않는다.
+
 ## 개발 환경
 
 - Node.js: 26.13.0 기준, 26.x 사용
