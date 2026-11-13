@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { loadKakaoMaps } from '../lib/loadKakaoMaps';
-import type { KakaoMap, KakaoMapsApi, KakaoOverlay } from '../types/kakaoMap.type';
+import { sameMapView } from '../lib/placeMapParams';
+import type { KakaoMap, KakaoMapsApi, KakaoOverlay, PlaceMapBounds, PlaceMapView } from '../types/kakaoMap.type';
 import type { SamplePlace } from '../types/samplePlace.type';
 import './KakaoPlaceMap.css';
 
@@ -21,36 +22,76 @@ function fitPlaces({ api, map }: MapContext, places: SamplePlace[]) {
   map.setBounds(bounds, 70, 30, 180, 30);
 }
 
-export default function KakaoPlaceMap({ places, selectedId, onSelect }: {
+export default function KakaoPlaceMap({ places, selectedId, onSelect, onBoundsChange, view = null }: {
   places: SamplePlace[];
   selectedId: number | null;
   onSelect: (id: number) => void;
+  onBoundsChange?: (bounds: PlaceMapBounds, view: PlaceMapView) => void;
+  view?: PlaceMapView | null;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const pins = useRef<Pin[]>([]);
-  const latest = useRef({ places, selectedId });
+  const previousView = useRef<PlaceMapView | null>(view);
+  const latest = useRef({ places, onBoundsChange, view });
   const [context, setContext] = useState<MapContext | null>(null);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
-  useEffect(() => { latest.current = { places, selectedId }; }, [places, selectedId]);
+  useEffect(() => { latest.current = { places, onBoundsChange, view }; }, [places, onBoundsChange, view]);
 
   useEffect(() => {
     const element = container.current;
     if (!element) return;
     let active = true;
     let observer: ResizeObserver | undefined;
+    let disposeEvents: (() => void) | undefined;
     loadKakaoMaps().then(api => {
       if (!active) return;
-      const map = new api.Map(element, { center: new api.LatLng(37.6, 128), level: 11 });
+      const initialView = latest.current.view;
+      const map = new api.Map(element, {
+        center: new api.LatLng(initialView?.lat ?? 37.6, initialView?.lng ?? 128),
+        level: initialView?.level ?? 11,
+      });
       map.addControl(new api.ZoomControl(), api.ControlPosition.RIGHT);
       const next = { api, map };
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      let fitted = false;
+      const cancelSearch = () => clearTimeout(timer);
+      const search = () => {
+        cancelSearch();
+        timer = setTimeout(() => {
+          if (!active || !element.clientWidth || !element.clientHeight) return;
+          const bounds = map.getBounds();
+          const sw = bounds.getSouthWest();
+          const ne = bounds.getNorthEast();
+          const center = map.getCenter();
+          latest.current.onBoundsChange?.(
+            { south: sw.getLat(), west: sw.getLng(), north: ne.getLat(), east: ne.getLng() },
+            { lat: center.getLat(), lng: center.getLng(), level: map.getLevel() }
+          );
+        }, 300);
+      };
+      api.event.addListener(map, 'bounds_changed', cancelSearch);
+      api.event.addListener(map, 'idle', search);
+      disposeEvents = () => {
+        cancelSearch();
+        api.event.removeListener(map, 'bounds_changed', cancelSearch);
+        api.event.removeListener(map, 'idle', search);
+      };
       observer = new ResizeObserver(() => {
         if (element.clientWidth === 0 || element.clientHeight === 0) return;
+        const center = map.getCenter();
         map.relayout();
-        fitPlaces(next, latest.current.places);
-        const selected = latest.current.places.find(place => place.id === latest.current.selectedId);
-        if (selected) map.panTo(new api.LatLng(selected.latitude, selected.longitude));
+        if (!fitted) {
+          // 처음 보일 때만 후보를 모아 표시하고, 검색 결과 갱신 시에는 지도를 움직이지 않습니다.
+          const savedView = latest.current.view;
+          if (savedView) {
+            map.setLevel(savedView.level);
+            map.setCenter(new api.LatLng(savedView.lat, savedView.lng));
+          } else fitPlaces(next, latest.current.places);
+          fitted = true;
+        } else map.setCenter(center);
+        search();
       });
       observer.observe(element);
       setContext(next);
@@ -60,9 +101,28 @@ export default function KakaoPlaceMap({ places, selectedId, onSelect }: {
     return () => {
       active = false;
       observer?.disconnect();
+      disposeEvents?.();
       element.replaceChildren();
     };
   }, [attempt]);
+
+  const lat = view?.lat;
+  const lng = view?.lng;
+  const level = view?.level;
+  useEffect(() => {
+    if (!context) return;
+    const target = lat !== undefined && lng !== undefined && level !== undefined
+      ? { lat, lng, level }
+      : previousView.current ? { lat: 37.6, lng: 128, level: 11 } : null;
+    previousView.current = lat !== undefined && lng !== undefined && level !== undefined ? { lat, lng, level } : null;
+    if (!target) return;
+    const center = context.map.getCenter();
+    const current = { lat: center.getLat(), lng: center.getLng(), level: context.map.getLevel() };
+    // URL 복원만 지도에 적용하고 지도에서 기록한 같은 좌표는 다시 적용하지 않습니다.
+    if (sameMapView(current, target)) return;
+    context.map.setLevel(target.level);
+    context.map.setCenter(new context.api.LatLng(target.lat, target.lng));
+  }, [context, lat, lng, level]);
 
   useEffect(() => {
     if (!context) return;
@@ -87,7 +147,6 @@ export default function KakaoPlaceMap({ places, selectedId, onSelect }: {
       disposers.push(() => { button.removeEventListener('click', select); overlay.setMap(null); });
       return { id: place.id, overlay, button };
     });
-    fitPlaces(context, places);
     return () => {
       disposers.forEach(dispose => dispose());
       pins.current = [];
@@ -101,9 +160,13 @@ export default function KakaoPlaceMap({ places, selectedId, onSelect }: {
       pin.button.setAttribute('aria-pressed', String(selected));
       pin.overlay.setZIndex(selected ? 10 : 1);
     });
-    const selected = places.find(place => place.id === selectedId);
-    if (selected) context.map.panTo(new context.api.LatLng(selected.latitude, selected.longitude));
   }, [context, places, selectedId]);
+
+  useEffect(() => {
+    if (!context || selectedId === null) return;
+    const selected = latest.current.places.find(place => place.id === selectedId);
+    if (selected) context.map.panTo(new context.api.LatLng(selected.latitude, selected.longitude));
+  }, [context, selectedId]);
 
   return (
     <div className="outpick-mapStage">
@@ -117,7 +180,6 @@ export default function KakaoPlaceMap({ places, selectedId, onSelect }: {
           <button type="button" onClick={() => { setError(false); setContext(null); setAttempt(value => value + 1); }}>지도 다시 불러오기</button>
         </div>
       )}
-      {context && places.length === 0 && <p className="outpick-mapMessage" role="status">조건에 맞는 장소가 없어요.</p>}
     </div>
   );
 }

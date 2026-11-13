@@ -9,6 +9,8 @@ import { categories, defaultFilters, readPlaceSearchParams, seasons, writePlaceS
 import PlaceSearchForm from './PlaceSearchForm';
 import PlaceArtwork from '@/domains/place/components/PlaceArtwork';
 import KakaoPlaceMap from '@/domains/place/components/KakaoPlaceMap';
+import type { PlaceMapBounds, PlaceMapView } from '@/domains/place/types/kakaoMap.type';
+import { readPlaceMapBounds, readPlaceMapParams, writePlaceMapParams } from '@/domains/place/lib/placeMapParams';
 import { samplePlaces } from '@/domains/place/data/samplePlaces';
 import { getPlaceDetailUrl, rememberPlaceListPosition, takePlaceListPosition } from '@/domains/place/lib/placeNavigation';
 import './PlaceExplorer.css';
@@ -19,7 +21,17 @@ export default function PlaceExplorer() {
   const [formResetCount, setFormResetCount] = useState(0);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [mobileMap, setMobileMap] = useState(false);
+  const mapBounds = useMemo(() => readPlaceMapBounds(searchParams), [searchParams]);
   const listUrl = `/${searchParams.size ? `?${searchParams}` : ''}`;
+  const mapView = readPlaceMapParams(searchParams);
+
+  function changeMapBounds(bounds: PlaceMapBounds, view: PlaceMapView) {
+    const params = writePlaceMapParams(new URLSearchParams(window.location.search), view, bounds);
+    const nextUrl = `${window.location.pathname}?${params}${window.location.hash}`;
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    // 지도 이동은 현재 기록만 갱신해서 뒤로 가기에 지도 이동 기록이 쌓이지 않게 합니다.
+    if (nextUrl !== currentUrl) window.history.replaceState(null, '', nextUrl);
+  }
 
   useEffect(() => {
     const url = `${window.location.pathname}${window.location.search}`;
@@ -38,7 +50,9 @@ export default function PlaceExplorer() {
   }
 
   const places = useMemo(() => samplePlaces.filter(place =>
-    (!search || place.name.includes(search))
+    (!mapBounds || (place.latitude >= mapBounds.south && place.latitude <= mapBounds.north
+      && place.longitude >= mapBounds.west && place.longitude <= mapBounds.east))
+    && (!search || place.name.includes(search))
     && (!region || place.region === region)
     && place.activities.some(activity =>
       (category === '전체' || activity.category === category)
@@ -47,7 +61,7 @@ export default function PlaceExplorer() {
     )
   ).sort((a, b) => sort === 'name'
     ? a.name.localeCompare(b.name, 'ko') || a.id - b.id
-    : b.name.localeCompare(a.name, 'ko') || a.id - b.id), [search, region, category, season, environment, sort]);
+    : b.name.localeCompare(a.name, 'ko') || a.id - b.id), [search, region, category, season, environment, sort, mapBounds]);
   const selectedPlace = places.find(place => place.id === selectedId);
 
   function changeFilters(changes: Partial<PlaceSearchFilters>) {
@@ -115,6 +129,7 @@ export default function PlaceExplorer() {
             <button type="button" className="outpick-reset" onClick={resetFilters}>필터 초기화</button>
           </div>
           <p className="outpick-sampleNotice">샘플 데이터 · 실제 시설 및 운영 정보가 아닙니다.</p>
+          <p className="outpick-sampleNotice">지도를 이동하거나 확대하면 현재 지도 영역에서 자동 검색해요.</p>
           {places.length > 0 ? (
             <ul className="outpick-cards" aria-label="장소 목록">
               {places.map(place => (
@@ -149,13 +164,14 @@ export default function PlaceExplorer() {
         </section>
 
         <aside aria-label="장소 지도" className={`outpick-mapPanel ${!mobileMap ? 'outpick-mapMobileHidden' : ''}`}>
-          <KakaoPlaceMap places={places} selectedId={selectedPlace?.id ?? null} onSelect={setSelectedId} />
-          <div className="outpick-mapSelection" aria-live="polite">
-            {selectedPlace ? <><span>선택한 샘플 장소</span><h3>{selectedPlace.name}</h3><p>{selectedPlace.region} · {selectedPlace.area} · {selectedPlace.activities.map(activity => activity.name).join(' / ')}</p></> : <><h3>어디로 떠나볼까요?</h3><p>카드를 선택하면 이곳에 장소 요약이 표시됩니다.</p></>}
-            {selectedPlace
-              ? <Link className="outpick-detailLink" href={getPlaceDetailUrl(selectedPlace.id, listUrl)} onClick={rememberPosition}>장소 상세 보기 →</Link>
-              : <p className="outpick-pending">목록에서 장소를 선택한 뒤 상세 정보를 확인할 수 있어요.</p>}
-          </div>
+          <KakaoPlaceMap places={places} selectedId={selectedPlace?.id ?? null} onSelect={setSelectedId} onBoundsChange={changeMapBounds} view={mapView} />
+          {selectedPlace && (
+            <div className="outpick-mapSelection" aria-live="polite">
+              <span>선택한 샘플 장소</span><h3>{selectedPlace.name}</h3>
+              <p>{selectedPlace.region} · {selectedPlace.area} · {selectedPlace.activities.map(activity => activity.name).join(' / ')}</p>
+              <Link className="outpick-detailLink" href={getPlaceDetailUrl(selectedPlace.id, listUrl)} onClick={rememberPosition}>장소 상세 보기 →</Link>
+            </div>
+          )}
         </aside>
       </main>
       <button type="button" className="outpick-mobileToggle" aria-pressed={mobileMap} onClick={() => setMobileMap(!mobileMap)}>{mobileMap ? '목록 보기' : '지도 보기'}</button>

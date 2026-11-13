@@ -5,9 +5,16 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PlaceExplorer from './PlaceExplorer';
+import type { PlaceMapBounds, PlaceMapView } from '@/domains/place/types/kakaoMap.type';
 
 vi.mock('@/domains/place/components/KakaoPlaceMap', () => ({
-  default: () => <div aria-label="샘플 장소 지도" />,
+  default: ({ onBoundsChange, view }: { onBoundsChange: (bounds: PlaceMapBounds, view: PlaceMapView) => void; view: PlaceMapView | null }) => (
+    <div aria-label="샘플 장소 지도" data-view={JSON.stringify(view)}>
+      <button onClick={() => onBoundsChange(
+        { south: 37.37, north: 37.38, west: 128.39, east: 128.66 }, { lat: 37.375, lng: 128.525, level: 8 }
+      )}>테스트 지도 이동</button>
+    </div>
+  ),
 }));
 
 // jsdom에는 Next.js 라우터가 없으므로 History API와 URL 구독 사이의 어댑터만 대체합니다.
@@ -31,6 +38,11 @@ beforeEach(() => {
   sessionStorage.clear();
   window.history.replaceState(null, '', '/');
   const pushState = window.history.pushState.bind(window.history);
+  const replaceState = window.history.replaceState.bind(window.history);
+  vi.spyOn(window.history, 'replaceState').mockImplementation((data, unused, url) => {
+    replaceState(data, unused, url);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
   vi.spyOn(window.history, 'pushState').mockImplementation((data, unused, url) => {
     pushState(data, unused, url);
     window.dispatchEvent(new PopStateEvent('popstate'));
@@ -42,6 +54,38 @@ afterEach(() => {
 });
 
 describe('샘플 장소 탐색', () => {
+  it('지도 이동은 기록을 늘리지 않고 URL을 갱신하며 상세 복귀 주소와 다시 마운트한 지도에 전달한다', async () => {
+    window.history.replaceState(null, '', '/?region=강원&from=share#results');
+    const user = userEvent.setup();
+    const view = render(<PlaceExplorer />);
+    const historyLength = window.history.length;
+    await user.click(screen.getByRole('button', { name: '테스트 지도 이동' }));
+    expect(window.history.length).toBe(historyLength);
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get('lat')).toBe('37.375');
+    expect(params.get('lng')).toBe('128.525');
+    expect(params.get('level')).toBe('8');
+    expect(params.get('region')).toBe('강원');
+    expect(params.get('from')).toBe('share');
+    expect(window.location.hash).toBe('#results');
+    const detail = new URL(screen.getByRole('link', { name: '눈마루 리조트 상세 보기' }).getAttribute('href')!, window.location.origin);
+    expect(new URL(detail.searchParams.get('returnTo')!, window.location.origin).searchParams.get('lat')).toBe('37.375');
+    view.unmount();
+    render(<PlaceExplorer />);
+    expect(screen.getByLabelText('샘플 장소 지도').getAttribute('data-view')).toBe(JSON.stringify({ lat: 37.375, lng: 128.525, level: 8 }));
+    expect(screen.queryByRole('heading', { name: '파도 서프 스테이션' })).toBeNull();
+    expect(screen.getByRole('heading', { name: '눈마루 리조트' })).toBeTruthy();
+  });
+  it('지도 경계의 장소를 포함하고 기존 종목 필터와 함께 적용한다', async () => {
+    const user = userEvent.setup();
+    render(<PlaceExplorer />);
+    await user.click(screen.getByRole('button', { name: '테스트 지도 이동' }));
+    expect(screen.getByRole('heading', { name: '눈마루 리조트' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '설원 파크' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: '파도 서프 스테이션' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: '수상' }));
+    expect(screen.getByRole('heading', { name: '조건에 맞는 장소가 없어요' })).toBeTruthy();
+  });
   it('장소명으로 검색한 뒤 초기화하면 전체 장소를 다시 보여 준다', async () => {
     const user = userEvent.setup();
     render(<PlaceExplorer />);
@@ -73,7 +117,7 @@ describe('샘플 장소 탐색', () => {
     expect(screen.getByRole('heading', { level: 3, name: '눈마루 리조트' })).toBeTruthy();
     fireEvent.change(screen.getByRole('combobox', { name: '지역' }), { target: { value: '경기' } });
     expect(screen.queryByRole('heading', { level: 3, name: '눈마루 리조트' })).toBeNull();
-    expect(screen.getByRole('heading', { name: '어디로 떠나볼까요?' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: '어디로 떠나볼까요?' })).toBeNull();
   });
 
   it('공유 URL로 진입하고 다시 마운트해도 검색어·필터·정렬을 복원한다', () => {

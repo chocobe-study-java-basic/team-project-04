@@ -1,7 +1,16 @@
 /** 이 화면에서 사용하는 공식 Kakao Maps SDK 인터페이스의 부분 타입입니다. */
 export type KakaoLatLng = { getLat(): number; getLng(): number };
-export type KakaoBounds = { extend(position: KakaoLatLng): void };
+export type PlaceMapBounds = { south: number; west: number; north: number; east: number };
+export type PlaceMapView = { lat: number; lng: number; level: number };
+export type KakaoBounds = {
+  extend(position: KakaoLatLng): void;
+  getSouthWest(): KakaoLatLng;
+  getNorthEast(): KakaoLatLng;
+};
 export type KakaoMap = {
+  getBounds(): KakaoBounds;
+  getCenter(): KakaoLatLng;
+  getLevel(): number;
   setBounds(bounds: KakaoBounds, top?: number, right?: number, bottom?: number, left?: number): void;
   setCenter(position: KakaoLatLng): void;
   setLevel(level: number): void;
@@ -11,6 +20,10 @@ export type KakaoMap = {
 };
 export type KakaoOverlay = { setMap(map: KakaoMap | null): void; setZIndex(index: number): void };
 export type KakaoMapsApi = {
+  event: {
+    addListener(map: KakaoMap, name: 'idle' | 'bounds_changed', handler: () => void): void;
+    removeListener(map: KakaoMap, name: 'idle' | 'bounds_changed', handler: () => void): void;
+  };
   load(callback: () => void): void;
   Map: new (element: HTMLElement, options: { center: KakaoLatLng; level: number }) => KakaoMap;
   LatLng: new (latitude: number, longitude: number) => KakaoLatLng;
