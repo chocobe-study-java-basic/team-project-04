@@ -4,7 +4,7 @@
 
 사용자가 제공한 `Copy of Copy of OUTPICK - v3.sql`을 직접 확인했다. 상세 기획·설계안은 참고 자료로 읽었으며, SQL에 없는 제안 구조를 팀의 확정 사항으로 간주하지 않았다.
 
-이번 변경은 장소 검색·상세 API를 준비하는 저장 모델이다. HTTP API, 관리자 등록 API, 공공 API 수집, 실제 장소 데이터 적재는 포함하지 않는다.
+이 문서는 장소 검색·상세 API의 저장 모델을 다룬다. 후속 구현한 HTTP 검색 계약은 [장소 검색 API 문서](place-search-api.md)를 참고한다. 관리자 등록 API, 공공 API 수집, 실제 장소 데이터 적재는 포함하지 않는다.
 
 - `Region`: 상위 지역을 선택적으로 참조한다.
 - `ActivityCategory` → `ActivityType`: 활동 분류와 종목.
