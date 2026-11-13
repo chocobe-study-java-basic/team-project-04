@@ -62,7 +62,6 @@ class BackendApplicationTests {
         }
 
         // DB에 기록된 SQL 실행 이력과 프로젝트의 마이그레이션 SQL 파일이 일치하는지 확인합니다.
-        // 현재는 SQL 파일이 없으므로 비교할 실행 이력도 없는 상태입니다.
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
 
         // 프로젝트의 마이그레이션 SQL 중 DB에 아직 실행하지 않은 파일이 없는지 확인합니다.
