@@ -34,17 +34,16 @@
 
 ## 확정한 장소 게시 상태
 
-`Place.publishStatus`는 `PlacePublishStatus`와 명시적인 JPA Converter로 저장한다. enum 선언 순서에 의존하는 ORDINAL 매핑은 사용하지 않는다.
+`Place.publishStatus`와 `PlaceNotice.publishStatus`는 `PlacePublishStatus`와 명시적인 JPA Converter로 저장한다. enum 선언 순서에 의존하는 ORDINAL 매핑은 사용하지 않는다.
 
 - `0 = DRAFT`: 검수 전. 새 장소의 Java/DB 기본값이다.
 - `1 = PUBLISHED`: 공개. 후속 비회원 검색·상세 API는 이 값만 조회해야 한다.
 - `2 = HIDDEN`: 비공개. 공개 검색·상세에서 제외한다.
 
-V2는 기존 NULL을 DRAFT로 전환하고 `NOT NULL DEFAULT 0` 및 허용값 CHECK를 적용한다. 기존 1·2 값은 유지하며 그 외의 값이 있으면 마이그레이션을 실패시켜 잘못된 데이터를 임의로 공개하지 않는다. V1 파일은 변경하지 않았다. 공개 적합성 검수와 상태 변경 권한은 후속 서비스/API 작업이며, 이번 변경은 상태 저장 정책만 적용한다.
+V2(장소)와 V3(공지)는 기존 NULL을 DRAFT로 전환하고 `NOT NULL DEFAULT 0` 및 허용값 CHECK를 적용한다. 기존 1·2 값은 유지하며 그 외의 값이 있으면 마이그레이션을 실패시켜 잘못된 데이터를 임의로 공개하지 않는다. 이전 파일은 변경하지 않았다. 공개 적합성 검수와 상태 변경 권한은 후속 서비스/API 작업이다. 공지의 공개·유효기간 조회 정책은 [상세 API 문서](place-detail-api.md)를 참고한다.
 
 ## 아직 결정하지 않은 사항
 
-- **공지 게시 상태**: `PlaceNotice.publishStatus`의 숫자 의미는 아직 미정으로 `Byte`와 nullable 컬럼을 유지한다. 장소 게시 상태 정책을 공지에 자동 적용하지 않는다.
 - **버전**: `Place.version`은 SQL의 `VARCHAR(20)`을 그대로 보존한 일반 문자열이다. JPA `@Version`이 아니며 동시 수정 충돌을 방지하지 않는다. 낙관적 잠금이 필요하면 의미·타입을 합의하고 후속 마이그레이션으로 적용한다.
 - **상태/시즌 코드**: `environment_type`, `season`, `operation_status`, `priority`, 출처 `type`의 코드 목록은 강제하지 않았다. 테스트의 `WINTER`, `OUTDOOR`, `OFFICIAL`은 테스트 입력이며 최종 계약이 아니다.
 - **대표 사진**: `place_media`·`media_asset`와 대표 사진 선정 방식은 이번 범위에서 제외했다.

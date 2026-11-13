@@ -1,6 +1,7 @@
 package com.outpick.domain.place.entity;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -51,8 +52,9 @@ public class PlaceNotice {
     @Column(name = "valid_until", columnDefinition = "DATETIME")
     private LocalDateTime validUntil;
 
-    @Column(name = "publish_status")
-    private Byte publishStatus;
+    @Convert(converter = PlacePublishStatusConverter.class)
+    @Column(name = "publish_status", nullable = false)
+    private PlacePublishStatus publishStatus = PlacePublishStatus.DRAFT;
 
     @Builder
     public PlaceNotice(
@@ -63,7 +65,7 @@ public class PlaceNotice {
             String priority,
             LocalDateTime validFrom,
             LocalDateTime validUntil,
-            Byte publishStatus) {
+            PlacePublishStatus publishStatus) {
         this.place = Objects.requireNonNull(place, "place");
         this.sourceRecord = Objects.requireNonNull(sourceRecord, "sourceRecord");
         this.title = title;
@@ -71,6 +73,6 @@ public class PlaceNotice {
         this.priority = priority;
         this.validFrom = validFrom;
         this.validUntil = validUntil;
-        this.publishStatus = publishStatus;
+        this.publishStatus = publishStatus == null ? PlacePublishStatus.DRAFT : publishStatus;
     }
 }

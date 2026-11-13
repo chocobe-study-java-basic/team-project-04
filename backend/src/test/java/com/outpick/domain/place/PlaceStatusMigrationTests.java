@@ -27,9 +27,11 @@ class PlaceStatusMigrationTests {
             statement.executeUpdate("INSERT INTO place(region_id, name, publish_status) VALUES (1, '검수 전 데이터', NULL)");
             statement.executeUpdate("INSERT INTO place(region_id, name, publish_status) VALUES (1, '공개 데이터', 1)");
             statement.executeUpdate("INSERT INTO place(region_id, name, publish_status) VALUES (1, '비공개 데이터', 2)");
+            statement.executeUpdate("INSERT INTO source_record(source_record_id, place_id) VALUES (1, 1)");
+            statement.executeUpdate("INSERT INTO place_notice(place_id, source_record_id, publish_status) VALUES (1, 1, NULL), (1, 1, 1), (1, 1, 2)");
         }
         var flyway = Flyway.configure().dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword()).load();
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(1);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(2);
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
         try (var connection = DriverManager.getConnection(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
              var statement = connection.createStatement()) {
@@ -42,6 +44,26 @@ class PlaceStatusMigrationTests {
                 assertThat(rows.next()).isFalse();
             }
             statement.executeUpdate("INSERT INTO place(region_id, name) VALUES (1, '기본값 검증')");
+            try (var rows = statement.executeQuery("SELECT publish_status FROM place_notice ORDER BY place_notice_id")) {
+                for (int expected : new int[]{0, 1, 2}) {
+                    assertThat(rows.next()).isTrue();
+                    assertThat(rows.getInt(1)).isEqualTo(expected);
+                    assertThat(rows.wasNull()).isFalse();
+                }
+            }
+            statement.executeUpdate("INSERT INTO place_notice(place_id, source_record_id, title) VALUES (1, 1, '기본값 검증')");
+            try (var rows = statement.executeQuery("SELECT publish_status FROM place_notice WHERE title = '기본값 검증'")) {
+                assertThat(rows.next()).isTrue();
+                assertThat(rows.getInt(1)).isZero();
+                assertThat(rows.wasNull()).isFalse();
+            }
+            assertThatThrownBy(() -> statement.executeUpdate("INSERT INTO place_notice(place_id, source_record_id, publish_status) VALUES (1, 1, 3)"))
+                    .isInstanceOfSatisfying(SQLException.class, error -> {
+                        assertThat(error.getErrorCode()).isEqualTo(3819);
+                        assertThat(error.getMessage()).contains("ck_place_notice_publish_status");
+                    });
+            assertThatThrownBy(() -> statement.executeUpdate("INSERT INTO place_notice(place_id, source_record_id, publish_status) VALUES (1, 1, NULL)"))
+                    .isInstanceOf(SQLException.class);
             try (var rows = statement.executeQuery("SELECT publish_status FROM place WHERE name = '기본값 검증'")) {
                 assertThat(rows.next()).isTrue();
                 assertThat(rows.getInt(1)).isZero();

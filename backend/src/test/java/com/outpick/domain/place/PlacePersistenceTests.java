@@ -55,7 +55,7 @@ class PlacePersistenceTests {
     void migratesEmptyDatabase() {
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
         assertThat(flyway.info().pending()).isEmpty();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '1' AND success = 1", Integer.class))
                 .isEqualTo(1);
@@ -99,7 +99,7 @@ class PlacePersistenceTests {
         assertThat(loadedSeason.getPlaceActivity().getActivityType().getCategory().getName()).isEqualTo("겨울 활동");
         var loadedNotice = entityManager.find(PlaceNotice.class, notice.getId());
         assertThat(loadedNotice.getSourceRecord().getVerifiedAt()).isEqualTo(verifiedAt);
-        assertThat(loadedNotice.getPublishStatus()).isNull();
+        assertThat(loadedNotice.getPublishStatus()).isEqualTo(PlacePublishStatus.DRAFT);
     }
 
     @Test
