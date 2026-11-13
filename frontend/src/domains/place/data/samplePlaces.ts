@@ -1,4 +1,4 @@
-import type { SamplePlace } from './place-list.type';
+import type { SamplePlace } from '../types/samplePlace.type';
 
 /** 실제 시설·운영 정보가 아닌 UI 확인용 가상 장소입니다. */
 export const samplePlaces: SamplePlace[] = [

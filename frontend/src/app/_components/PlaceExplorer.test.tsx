@@ -24,6 +24,7 @@ vi.mock('next/navigation', async () => {
 });
 
 beforeEach(() => {
+  sessionStorage.clear();
   window.history.replaceState(null, '', '/');
   const pushState = window.history.pushState.bind(window.history);
   vi.spyOn(window.history, 'pushState').mockImplementation((data, unused, url) => {
@@ -154,5 +155,27 @@ describe('샘플 장소 탐색', () => {
     expect(screen.getByRole('button', { name: '전체' }).getAttribute('aria-pressed')).toBe('true');
     await user.selectOptions(screen.getByRole('combobox', { name: '지역' }), '경기');
     expect(new URLSearchParams(window.location.search).toString()).toBe(new URLSearchParams({ region: '경기' }).toString());
+  });
+
+  it('카드의 상세 링크가 현재 검색 조건을 복귀 주소로 유지한다', () => {
+    window.history.replaceState(null, '', '/?region=강원&season=겨울');
+    render(<PlaceExplorer />);
+    const href = screen.getByRole('link', { name: '눈마루 리조트 상세 보기' }).getAttribute('href');
+    const url = new URL(href!, window.location.origin);
+    expect(url.searchParams.get('id')).toBe('1');
+    const returnUrl = new URL(url.searchParams.get('returnTo')!, window.location.origin);
+    expect(returnUrl.searchParams.get('region')).toBe('강원');
+    expect(returnUrl.searchParams.get('season')).toBe('겨울');
+  });
+
+  it('일치하는 목록으로 복귀한 경우에만 저장한 스크롤을 적용한다', () => {
+    const url = `/?${new URLSearchParams({ region: '강원' })}`;
+    window.history.replaceState(null, '', url);
+    sessionStorage.setItem('outpick:place-list-position', JSON.stringify({ url, y: 480 }));
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => { callback(0); return 1; });
+    render(<PlaceExplorer />);
+    expect(scrollTo).toHaveBeenCalledWith({ top: 480, behavior: 'instant' });
+    expect(sessionStorage.getItem('outpick:place-list-position')).toBeNull();
   });
 });

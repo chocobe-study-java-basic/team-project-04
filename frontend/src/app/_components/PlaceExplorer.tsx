@@ -2,11 +2,14 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { MouseEvent } from 'react';
 import type { PlaceSearchFilters } from './place-list.type';
 import { categories, defaultFilters, readPlaceSearchParams, seasons, writePlaceSearchParams } from './placeSearchParams';
 import PlaceSearchForm from './PlaceSearchForm';
-import { samplePlaces } from './samplePlaces';
+import PlaceArtwork from '@/domains/place/components/PlaceArtwork';
+import { samplePlaces } from '@/domains/place/data/samplePlaces';
+import { getPlaceDetailUrl, rememberPlaceListPosition, takePlaceListPosition } from '@/domains/place/lib/placeNavigation';
 import './PlaceExplorer.css';
 
 export default function PlaceExplorer() {
@@ -15,6 +18,23 @@ export default function PlaceExplorer() {
   const [formResetCount, setFormResetCount] = useState(0);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [mobileMap, setMobileMap] = useState(false);
+  const listUrl = `/${searchParams.size ? `?${searchParams}` : ''}`;
+
+  useEffect(() => {
+    const url = `${window.location.pathname}${window.location.search}`;
+    // Next.js의 화면 전환과 레이아웃 반영 뒤 목록의 이전 스크롤을 적용합니다.
+    const frame = window.requestAnimationFrame(() => {
+      const y = takePlaceListPosition(url);
+      if (y !== null) window.scrollTo({ top: y, behavior: 'instant' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  function rememberPosition(event: MouseEvent<HTMLAnchorElement>) {
+    if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+      rememberPlaceListPosition();
+    }
+  }
 
   const places = samplePlaces.filter(place =>
     (!search || place.name.includes(search))
@@ -98,19 +118,21 @@ export default function PlaceExplorer() {
             <ul className="outpick-cards" aria-label="장소 목록">
               {places.map(place => (
                 <li key={place.id}>
-                  <button type="button" aria-pressed={selectedPlace?.id === place.id} className="outpick-card" onClick={() => setSelectedId(place.id)}>
-                    <div className={`outpick-artwork outpick-${place.artwork}`} aria-hidden="true">
-                      <span className="outpick-artworkSun" /><span className="outpick-artworkHill" /><span className="outpick-artworkHillBack" />
-                      <span className="outpick-artworkLabel">OUTPICK · SAMPLE</span>
-                    </div>
-                    <div className="outpick-cardBody">
-                      <p className="outpick-location">{place.region} · {place.area}</p>
-                      <h2>{place.name}</h2>
-                      <p className="outpick-description">{place.description}</p>
-                      <div className="outpick-tags">{place.activities.map(activity => <span key={activity.name}>{activity.name}</span>)}</div>
-                      <span className="outpick-selectHint">{selectedPlace?.id === place.id ? '선택한 장소' : '장소 선택'} <span aria-hidden="true">↗</span></span>
-                    </div>
-                  </button>
+                  <article className={`outpick-placeCard ${selectedPlace?.id === place.id ? 'outpick-placeCardSelected' : ''}`}>
+                    <button type="button" aria-pressed={selectedPlace?.id === place.id} className="outpick-card" onClick={() => setSelectedId(place.id)}>
+                      <PlaceArtwork artwork={place.artwork} />
+                      <div className="outpick-cardBody">
+                        <p className="outpick-location">{place.region} · {place.area}</p>
+                        <h2>{place.name}</h2>
+                        <p className="outpick-description">{place.description}</p>
+                        <div className="outpick-tags">{place.activities.map(activity => <span key={activity.name}>{activity.name}</span>)}</div>
+                        <span className="outpick-selectHint">{selectedPlace?.id === place.id ? '선택한 장소' : '장소 선택'} <span aria-hidden="true">↗</span></span>
+                      </div>
+                    </button>
+                    <Link className="outpick-detailLink" aria-label={`${place.name} 상세 보기`} href={getPlaceDetailUrl(place.id, listUrl)} onClick={rememberPosition}>
+                      상세 보기 <span aria-hidden="true">→</span>
+                    </Link>
+                  </article>
                 </li>
               ))}
             </ul>
@@ -135,7 +157,9 @@ export default function PlaceExplorer() {
           </div>
           <div className="outpick-mapSelection" aria-live="polite">
             {selectedPlace ? <><span>선택한 샘플 장소</span><h3>{selectedPlace.name}</h3><p>{selectedPlace.region} · {selectedPlace.area} · {selectedPlace.activities.map(activity => activity.name).join(' / ')}</p></> : <><h3>어디로 떠나볼까요?</h3><p>카드를 선택하면 이곳에 장소 요약이 표시됩니다.</p></>}
-            <p className="outpick-pending">장소 상세 페이지 연결은 다음 작업에서 진행합니다.</p>
+            {selectedPlace
+              ? <Link className="outpick-detailLink" href={getPlaceDetailUrl(selectedPlace.id, listUrl)} onClick={rememberPosition}>장소 상세 보기 →</Link>
+              : <p className="outpick-pending">목록에서 장소를 선택한 뒤 상세 정보를 확인할 수 있어요.</p>}
           </div>
         </aside>
       </main>
