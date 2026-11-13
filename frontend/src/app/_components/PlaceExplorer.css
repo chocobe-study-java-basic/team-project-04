@@ -45,14 +45,8 @@
 .outpick-selectHint { display: flex; align-items: center; justify-content: space-between; margin-top: 15px; color: #5147ff; font-size: 11px; font-weight: 700; }
 .outpick-selectHint span { font-size: 17px; }
 .outpick-footer { margin-top: 38px; color: #8995a6; font-size: 10px; }
-.outpick-mapPanel { position: sticky; top: 0; display: flex; flex-direction: column; justify-content: center; min-height: 620px; height: calc(100dvh - 145px); padding: 30px; border-left: 1px solid #e5e9ef; background-color: #f0f3f0; background-image: linear-gradient(#dbe4dc80 1px, transparent 1px), linear-gradient(90deg, #dbe4dc80 1px, transparent 1px); background-size: 60px 60px; }
-.outpick-mapPlaceholder { margin: auto; text-align: center; }
-.outpick-mapIcon { display: grid; place-items: center; width: 65px; height: 65px; margin: 0 auto 25px; border: 1px solid #d7dfd9; border-radius: 20px; background: #ffffffb3; color: #758d7d; font-size: 32px; }
-.outpick-mapPlaceholder .outpick-eyebrow { color: #809386; }
-.outpick-mapPlaceholder h2 { margin-top: 12px; font-size: 23px; font-weight: 700; letter-spacing: -.8px; }
-.outpick-mapPlaceholder > p:not(.outpick-eyebrow) { margin-top: 14px; color: #7d8d82; font-size: 13px; line-height: 1.9; }
-.outpick-mapStatus { display: inline-block; margin-top: 20px; padding: 7px 10px; border: 1px solid #dae3dc; border-radius: 20px; color: #7c8d81; font-size: 10px; }
-.outpick-mapSelection { padding: 21px 24px; border: 1px solid #e7eae7; border-radius: 12px; background: #fffffff5; box-shadow: 0 5px 20px #34553a05; }
+.outpick-mapPanel { position: sticky; top: 0; min-height: 620px; height: calc(100dvh - 145px); border-left: 1px solid #e5e9ef; }
+.outpick-mapSelection { position: absolute; bottom: 40px; left: 16px; right: 16px; z-index: 2; padding: 18px 20px; border: 1px solid #e7eae7; border-radius: 12px; background: #fffffff5; box-shadow: 0 5px 20px #34553a15; }
 .outpick-mapSelection > span { color: #6156ff; font-size: 10px; }
 .outpick-mapSelection h3 { margin-top: 3px; font-size: 16px; font-weight: 700; }
 .outpick-mapSelection p { margin-top: 5px; color: #7d899a; font-size: 11px; line-height: 1.7; }
@@ -65,7 +59,7 @@
 .outpick-mobileToggle { display: none; }
 .outpick-srOnly { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @media (min-width: 1600px) { .outpick-results { padding: 44px 56px; } .outpick-cards { gap: 28px 22px; } }
-@media (max-width: 1100px) { .outpick-header { gap: 20px; padding: 20px 24px; } .outpick-brand span { display: none; } .outpick-toolbar { flex-wrap: wrap; gap: 0; padding: 0 24px; } .outpick-categories { gap: 22px; } .outpick-filters { padding-bottom: 12px; } .outpick-results { padding: 28px 24px; } .outpick-mapPanel { padding: 22px; } .outpick-cardBody { padding: 12px; } }
+@media (max-width: 1100px) { .outpick-header { gap: 20px; padding: 20px 24px; } .outpick-brand span { display: none; } .outpick-toolbar { flex-wrap: wrap; gap: 0; padding: 0 24px; } .outpick-categories { gap: 22px; } .outpick-filters { padding-bottom: 12px; } .outpick-results { padding: 28px 24px; } .outpick-cardBody { padding: 12px; } }
 @media (max-width: 767px) {
   .outpick-header { flex-wrap: wrap; gap: 14px; padding: 20px; }
   .outpick-brand { font-size: 24px; }
@@ -84,8 +78,8 @@
   .outpick-card h2 { font-size: 14px; }
   .outpick-description { font-size: 10px; }
   .outpick-resultToolbar { gap: 9px; }
-  .outpick-mapPanel { position: relative; height: 65dvh; min-height: 450px; border-left: none; padding: 22px 20px 80px; }
-  .outpick-mapPlaceholder h2 { font-size: 22px; }
+  .outpick-mapPanel { position: relative; height: 75dvh; min-height: 560px; border-left: none; }
+  .outpick-mapSelection { bottom: 80px; }
   .outpick-mobileHidden, .outpick-mapMobileHidden { display: none; }
   .outpick-mobileToggle { position: fixed; bottom: 22px; left: 50%; display: block; transform: translateX(-50%); z-index: 5; padding: 13px 24px; border-radius: 30px; background: #16243b; color: #fff; box-shadow: 0 5px 20px #16243b25; font-size: 12px; white-space: nowrap; }
 }

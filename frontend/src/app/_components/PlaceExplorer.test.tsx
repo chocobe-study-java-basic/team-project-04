@@ -6,6 +6,10 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PlaceExplorer from './PlaceExplorer';
 
+vi.mock('@/domains/place/components/KakaoPlaceMap', () => ({
+  default: () => <div aria-label="샘플 장소 지도" />,
+}));
+
 // jsdom에는 Next.js 라우터가 없으므로 History API와 URL 구독 사이의 어댑터만 대체합니다.
 // 실제 Next.js의 pushState·새로고침·히스토리 연동은 브라우저에서 별도 확인합니다.
 vi.mock('next/navigation', async () => {

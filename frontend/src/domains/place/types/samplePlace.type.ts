@@ -5,6 +5,9 @@ export type SamplePlace = {
   region: string;
   area: string;
   description: string;
+  /** 지도 연동 검증용 임의 좌표이며 실제 시설 위치가 아닙니다. */
+  latitude: number;
+  longitude: number;
   artwork: 'snow' | 'water' | 'forest' | 'indoor';
   activities: {
     name: string;

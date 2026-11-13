@@ -4,6 +4,8 @@ import type { SamplePlace } from '../types/samplePlace.type';
 export const samplePlaces: SamplePlace[] = [
   {
     id: 1,
+    latitude: 37.37,
+    longitude: 128.39,
     name: '눈마루 리조트',
     region: '강원',
     area: '평창군',
@@ -16,6 +18,8 @@ export const samplePlaces: SamplePlace[] = [
   },
   {
     id: 2,
+    latitude: 37.38,
+    longitude: 128.66,
     name: '설원 파크',
     region: '강원',
     area: '정선군',
@@ -27,6 +31,8 @@ export const samplePlaces: SamplePlace[] = [
   },
   {
     id: 3,
+    latitude: 38.075,
+    longitude: 128.62,
     name: '파도 서프 스테이션',
     region: '강원',
     area: '양양군',
@@ -38,6 +44,8 @@ export const samplePlaces: SamplePlace[] = [
   },
   {
     id: 4,
+    latitude: 37.83,
+    longitude: 127.51,
     name: '숲길 어드벤처',
     region: '경기',
     area: '가평군',
@@ -49,6 +57,8 @@ export const samplePlaces: SamplePlace[] = [
   },
   {
     id: 5,
+    latitude: 37.28,
+    longitude: 127.01,
     name: '오름 클라이밍',
     region: '경기',
     area: '수원시',
@@ -60,6 +70,8 @@ export const samplePlaces: SamplePlace[] = [
   },
   {
     id: 6,
+    latitude: 37.78,
+    longitude: 127.53,
     name: '물빛 액티비티 센터',
     region: '경기',
     area: '가평군',
