@@ -4,6 +4,74 @@
 
 MySQL과 Spring Boot 실행 절차는 [프로젝트 README](../README.md)를 참고하세요.
 
+## Docker로 Backend 실행
+
+이 절차는 내 PC에서 Backend 이미지를 만들고 기존 Compose MySQL에 연결해 API 응답을 확인합니다. Docker Desktop이 실행 중이어야 합니다. 모든 명령은 프로젝트 루트에서 실행합니다.
+
+### 이미지 만들기
+
+```bash
+docker build -t outpick-backend:local ./backend
+```
+
+`Dockerfile`의 첫 단계는 Java 25 JDK와 저장소의 Gradle Wrapper로 `bootJar`를 실행해 앱 JAR 파일을 만듭니다. 최종 이미지에는 Java 25 JRE와 JAR 파일을 담고, 관리자 권한이 없는 사용자로 앱을 실행합니다. 로컬에 Java를 설치하지 않아도 이미지 빌드가 가능합니다.
+
+`bootJar`는 테스트를 실행하지 않습니다. 자동 테스트는 기존 Backend CI 또는 Docker가 실행 중인 PC의 `backend/`에서 `./gradlew test`로 별도 확인합니다. Testcontainers가 사용하는 Docker 엔진을 이미지 빌드 내부에 연결하지 않습니다.
+
+`backend/`가 Docker에 전달할 파일의 기준 디렉터리입니다. `.dockerignore`는 로컬 빌드 결과와 `.env`, 키 파일 등을 제외합니다. DB 비밀번호는 이미지에 저장하지 않고 컨테이너 실행 시 전달합니다.
+
+### MySQL에 연결해서 실행하기
+
+루트 `.env`가 없다면 [MySQL 실행 안내](../README.md#mysql-실행)에 따라 먼저 작성합니다. 다음 명령으로 MySQL의 준비가 끝날 때까지 기다립니다.
+
+```bash
+make compose-up
+```
+
+다음 명령은 기존 MySQL이 연결된 Docker 네트워크를 찾습니다. 이 네트워크에서 Backend는 `mysql:3306`으로 DB에 접근합니다. 컨테이너 안의 `localhost`는 Backend 자신을 가리키므로 DB 주소로 사용하지 않습니다.
+
+```bash
+MYSQL_CONTAINER_ID=$(docker compose ps -q mysql)
+MYSQL_NETWORK=$(docker inspect "$MYSQL_CONTAINER_ID" --format '{{range .NetworkSettings.Networks}}{{.NetworkID}}{{end}}')
+```
+
+전용 터미널에서 `.env`의 값을 읽고 Backend를 실행합니다. `.env`는 루트 README의 작성 규칙을 따릅니다. `MYSQL_ROOT_PASSWORD`는 Backend에 전달하지 않습니다.
+
+```bash
+set -a
+. ./.env
+set +a
+docker run --rm --name outpick-backend-local \
+  --network "$MYSQL_NETWORK" \
+  -p 127.0.0.1:18080:8080 \
+  -e SPRING_PROFILES_ACTIVE=local \
+  -e MYSQL_HOST=mysql \
+  -e MYSQL_PORT=3306 \
+  -e MYSQL_DATABASE -e MYSQL_USER -e MYSQL_PASSWORD \
+  outpick-backend:local
+```
+
+`18080:8080`은 내 PC의 18080 포트를 컨테이너의 8080 포트로 연결합니다. IntelliJ로 실행 중인 앱의 기본 8080 포트와 함께 사용할 수 있습니다. DB 연결에는 MySQL 컨테이너 내부의 3306 포트를 사용하므로 `.env`의 PC용 `MYSQL_PORT`와 별도로 지정합니다.
+
+### 응답 확인과 종료
+
+로그에 `Started BackendApplication`이 나오면 다른 터미널에서 확인합니다.
+
+```bash
+curl --fail http://localhost:18080/actuator/health
+curl --fail http://localhost:18080/api/v1/examples/1
+```
+
+첫 요청의 `status`는 `UP`이어야 합니다. 두 번째 요청은 `{"name":"예시 액티비티","participantCount":3}`을 반환해야 합니다. 예시 API는 고정 데이터를 반환하므로 DB 연결은 health 응답과 시작 로그로 함께 확인합니다.
+
+앱을 실행한 터미널에서 `Ctrl+C`를 누르면 Backend가 종료되고 `--rm`에 의해 해당 컨테이너가 삭제됩니다. 이미지는 남으며 MySQL과 데이터 볼륨도 유지됩니다.
+
+이 단계는 로컬 검증입니다. Mac의 Apple Silicon은 ARM64이고 현재 EC2의 t3.small은 AMD64이므로, 기본 명령으로 만든 Mac용 이미지를 EC2에 그대로 옮겨 실행할 수는 없습니다. EC2 배포 단계에서는 대상에 맞게 `linux/amd64` 이미지를 빌드합니다. 운영용 설정·이미지 업로드·EC2 배포는 후속 작업입니다.
+
+참고: [Docker의 여러 단계 빌드](https://docs.docker.com/build/building/multi-stage/), [Eclipse Temurin 공식 이미지](https://hub.docker.com/_/eclipse-temurin).
+
+2026-11-16 Apple Silicon Mac에서 이미지 빌드, 관리자 권한이 없는 사용자 `10001:10001`로 실행, MySQL 연결, health의 `UP`, 예시 API 정상 응답을 확인했습니다. 기존 Backend 테스트 38개도 모두 통과했습니다. EC2용 AMD64 이미지 빌드·실행은 아직 확인하지 않았습니다.
+
 ## 장소 저장 모델
 
 ERD v3 기반 장소·지역·종목·시즌·출처·공지 엔티티와 Flyway 마이그레이션을 추가했다. 장소와 공지의 게시 상태는 `0=검수 전(기본값)`, `1=공개`, `2=비공개`이며 각각 V2/V3에서 적용한다. 구현 범위, SQL 대비 변경점과 미정 사항은 [장소 모델 문서](docs/place-model.md)를 참고한다. 대표 사진·운영시간 저장 방식은 아직 확정하지 않았다. 검색·상세 API는 구현했으며 등록 API는 후속 작업이다.
