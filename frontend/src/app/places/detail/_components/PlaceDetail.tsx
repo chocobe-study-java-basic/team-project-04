@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import PlaceArtwork from '@/domains/place/components/PlaceArtwork';
+import PlacePhoto, { PlacePhotoCredit, getPlacePhoto } from '@/domains/place/components/PlacePhoto';
 import CopyPlaceLinkButton from '@/domains/place/components/CopyPlaceLinkButton';
 import { usePlaceDetail } from '@/domains/place/hooks/usePlaces';
 import { environmentLabel, seasonLabel } from '@/domains/place/api/placeApi';
@@ -53,7 +53,7 @@ export default function PlaceDetail() {
                   <CopyPlaceLinkButton label="장소 링크 복사" path={`/places/detail/?id=${place.id}`} />
                 </div>
               </div>
-              <PlaceArtwork artwork="forest" />
+              <div className="outpick-detailPhoto"><PlacePhoto place={place} /><PlacePhotoCredit place={place} /></div>
             </div>
 
             <div className="outpick-detailColumns">
@@ -85,7 +85,7 @@ export default function PlaceDetail() {
                     <div><dt>확인 항목</dt><dd>{source.verifiedFields ?? '미등록'}</dd></div>
                     <div><dt>확인일</dt><dd>{source.verifiedAt.replace('T', ' ')}</dd></div>
                   </dl>) : <p>확인된 출처가 없습니다.</p>}
-                  <p>이미지는 시설 사진이 아닌 안내용 일러스트입니다.</p>
+                  <p>{getPlacePhoto(place) ? '시설 사진의 출처와 이용조건은 사진 아래에서 확인할 수 있습니다.' : '사진이 없거나 불러오지 못하면 시설 사진이 아닌 안내용 일러스트를 표시합니다.'}</p>
                 </section>
               </div>
               <aside className="outpick-visitInfo" aria-labelledby="visit-information">

@@ -7,6 +7,7 @@ import com.outpick.domain.place.entity.PlaceActivity;
 import com.outpick.domain.place.entity.PlaceActivitySeason;
 import com.outpick.domain.place.entity.PlaceNotice;
 import com.outpick.domain.place.entity.PlacePublishStatus;
+import com.outpick.domain.place.entity.PlaceRepresentativeImage;
 import com.outpick.domain.place.entity.Region;
 import com.outpick.domain.place.entity.SourceRecord;
 import jakarta.persistence.EntityManager;
@@ -179,6 +180,42 @@ class PlaceDetailApiTests {
                 .andExpect(jsonPath("$.paths['/api/v1/places/{placeId}'].get").exists())
                 .andExpect(jsonPath("$.components.schemas.PlaceDetailResponse.properties.activities").exists())
                 .andExpect(jsonPath("$.components.schemas.PlaceSourceResponse.properties.verifierId").doesNotExist());
+    }
+
+    @Test
+    void returnsTheSameVerifiedPhotoAndAttributionInListAndDetailWithoutExtraQueries() throws Exception {
+        String url = "https://tong.visitkorea.or.kr/cms/resource/1/123_image2_1.jpg";
+        persist(new PlaceRepresentativeImage(published, url, "한국관광공사 TourAPI 제공 · 테스트 사진",
+                "https://www.data.go.kr/data/15101578/openapi.do", "Type3", NOW));
+        em.flush();
+        em.clear();
+        var stats = em.getEntityManagerFactory().unwrap(SessionFactory.class).getStatistics();
+        stats.clear();
+        mvc.perform(get("/api/v1/places/{id}", published.getId()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.representativeImage").value(url))
+                .andExpect(jsonPath("$.imageLicense").value("Type3"))
+                .andExpect(jsonPath("$.imageAttribution").value("한국관광공사 TourAPI 제공 · 테스트 사진"))
+                .andExpect(jsonPath("$.imageSourceUrl").value("https://www.data.go.kr/data/15101578/openapi.do"));
+        assertThat(stats.getPrepareStatementCount()).isEqualTo(5);
+        em.clear();
+        stats.clear();
+        mvc.perform(get("/api/v1/places").param("query", "공개 장소"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].representativeImage").value(url))
+                .andExpect(jsonPath("$.items[0].imageLicense").value("Type3"));
+        assertThat(stats.getPrepareStatementCount()).isEqualTo(2);
+    }
+
+    @Test
+    void rejectsPhotosWithUnknownRightsOrUntrustedHost() {
+        for (String url : new String[]{"https://example.com/image.jpg", "http://tong.visitkorea.or.kr/cms/resource/1/a.jpg",
+                "https://tong.visitkorea.or.kr/cms/resource/1/a.jpg?key=secret"}) {
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> new PlaceRepresentativeImage(published, url,
+                    "출처", "https://www.data.go.kr", "Type1", NOW)).isInstanceOf(IllegalArgumentException.class);
+        }
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> new PlaceRepresentativeImage(published,
+                "https://tong.visitkorea.or.kr/cms/resource/1/a.jpg", "출처", "https://www.data.go.kr", "Unknown", NOW))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

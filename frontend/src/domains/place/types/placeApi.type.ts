@@ -4,6 +4,10 @@ export type PlaceSummary = {
   address: string | null;
   latitude: number | null;
   longitude: number | null;
+  representativeImage?: string | null;
+  imageAttribution?: string | null;
+  imageSourceUrl?: string | null;
+  imageLicense?: string | null;
 };
 export type PlacePage = { items: PlaceSummary[]; page: number; size: number; totalElements: number };
 export type PlaceCatalog = {
