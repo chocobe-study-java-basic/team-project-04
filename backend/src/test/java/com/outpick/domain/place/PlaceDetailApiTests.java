@@ -8,6 +8,8 @@ import com.outpick.domain.place.entity.PlaceActivitySeason;
 import com.outpick.domain.place.entity.PlaceNotice;
 import com.outpick.domain.place.entity.PlacePublishStatus;
 import com.outpick.domain.place.entity.PlaceRepresentativeImage;
+import com.outpick.domain.place.entity.PlaceOperatingInfo;
+import com.outpick.domain.place.importer.TourApiImportRecord;
 import com.outpick.domain.place.entity.Region;
 import com.outpick.domain.place.entity.SourceRecord;
 import jakarta.persistence.EntityManager;
@@ -180,6 +182,32 @@ class PlaceDetailApiTests {
                 .andExpect(jsonPath("$.paths['/api/v1/places/{placeId}'].get").exists())
                 .andExpect(jsonPath("$.components.schemas.PlaceDetailResponse.properties.activities").exists())
                 .andExpect(jsonPath("$.components.schemas.PlaceSourceResponse.properties.verifierId").doesNotExist());
+    }
+
+    @Test
+    void separatesCollectedOperatingInfoFromVerifiedPlaceDataAndKeepsQueryCountConstant() throws Exception {
+        var source = persist(SourceRecord.builder().place(published).type("TOUR_API").originId("2623831").build());
+        persist(new TourApiImportRecord("2623831", published.getId(), source.getId(), NOW.minusDays(2)));
+        persist(new PlaceOperatingInfo(published, "2623831", "평日 10:30", "월요일", "1855-3946", NOW));
+        em.flush();
+        em.clear();
+        var stats = em.getEntityManagerFactory().unwrap(SessionFactory.class).getStatistics();
+        stats.clear();
+        mvc.perform(get("/api/v1/places/{id}", published.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.operatingInfo.operatingHours").value("평日 10:30"))
+                .andExpect(jsonPath("$.operatingInfo.restDays").value("월요일"))
+                .andExpect(jsonPath("$.operatingInfo.contactPhone").value("1855-3946"))
+                .andExpect(jsonPath("$.operatingInfo.collectedAt").value("2026-11-13T12:00:00"))
+                .andExpect(jsonPath("$.operatingInfo.verificationStatus").value("UNVERIFIED"))
+                .andExpect(jsonPath("$.operatingInfo.verifiedAt").value(nullValue()))
+                .andExpect(jsonPath("$.operationStatus").value(nullValue()));
+        assertThat(stats.getPrepareStatementCount()).isEqualTo(5);
+        published = em.find(Place.class, published.getId());
+        published.changePublishStatus(PlacePublishStatus.HIDDEN);
+        em.flush();
+        mvc.perform(get("/api/v1/places/{id}", published.getId())).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.operatingInfo").doesNotExist());
     }
 
     @Test

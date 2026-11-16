@@ -15,7 +15,20 @@ export type PlaceCatalog = {
   categories: { id: number; name: string; activityTypeIds: number[] }[];
 };
 export type PlaceSelection = { query: string; category: string; region: string; season: string; environment: string; sort: string };
+export type PlaceOperatingInfoData = {
+  operatingHours: string | null;
+  restDays: string | null;
+  contactPhone: string | null;
+  sourceUrl: string;
+  collectedAt: string;
+  verificationStatus: 'UNVERIFIED' | 'NEEDS_REVIEW' | 'VERIFIED';
+  verifiedAt: string | null;
+  reviewNote: string | null;
+  officialSourceUrl: string | null;
+  comparedAt: string | null;
+};
 export type PlaceDetailData = PlaceSummary & {
+  operatingInfo?: PlaceOperatingInfoData | null;
   nameAlias: string | null;
   description: string | null;
   homepage: string | null;

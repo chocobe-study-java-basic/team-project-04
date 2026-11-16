@@ -1,3 +1,4 @@
+param([ValidateSet('importTourPlaces', 'importPlaceOperatingInfo')][string]$Task = 'importTourPlaces')
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $envFile = Join-Path $projectRoot '.env'
@@ -21,5 +22,5 @@ foreach ($name in @('TOUR_API_KEY', 'MYSQL_DATABASE', 'MYSQL_PASSWORD')) {
         throw ".env에 $name 값을 설정해 주세요."
     }
 }
-& (Join-Path $projectRoot 'backend/gradlew.bat') -p (Join-Path $projectRoot 'backend') importTourPlaces --no-daemon
+& (Join-Path $projectRoot 'backend/gradlew.bat') -p (Join-Path $projectRoot 'backend') $Task --no-daemon
 exit $LASTEXITCODE

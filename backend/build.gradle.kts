@@ -51,6 +51,15 @@ springBoot {
 	mainClass = "com.outpick.BackendApplication"
 }
 
+tasks.register<JavaExec>("importPlaceOperatingInfo") {
+	group = "application"
+	description = "플라이스테이션 운영 안내를 로컬 DB에 미검수 참고정보로 최초 수집합니다."
+	classpath = sourceSets.main.get().runtimeClasspath
+	mainClass = "com.outpick.domain.place.importer.TourOperatingInfoCommand"
+	systemProperty("spring.devtools.restart.enabled", "false")
+	javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+}
+
 tasks.register<JavaExec>("importTourPlaces") {
 	group = "application"
 	description = "TourAPI 초기 후보 5곳을 로컬 DB에 검수 전 상태로 수집합니다."

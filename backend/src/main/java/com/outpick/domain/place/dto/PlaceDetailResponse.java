@@ -9,7 +9,7 @@ public record PlaceDetailResponse(Long id, String name, String nameAlias, String
                                    LocalDateTime reviewedAt, String representativeImage,
                                    String imageAttribution, String imageSourceUrl, String imageLicense,
                                    List<PlaceActivityResponse> activities, List<PlaceNoticeResponse> notices,
-                                   List<PlaceSourceResponse> sources) {
+                                   List<PlaceSourceResponse> sources, PlaceOperatingInfoResponse operatingInfo) {
     public PlaceDetailResponse {
         activities = List.copyOf(activities);
         notices = List.copyOf(notices);
