@@ -1,0 +1,9 @@
+# 복사한 terraform.tfvars에 실제 계정 ID와 공인 IP를 입력합니다.
+# 액세스 키·비밀 키·SSH 개인 키는 입력하지 않습니다.
+aws_profile      = "outpick"
+aws_account_id   = "123456789012"
+ssh_allowed_cidr = "203.0.113.10/32"
+
+key_pair_name        = "devcos-team05--ec2-keypair"
+instance_type        = "t3.small"
+root_volume_size_gib = 20
