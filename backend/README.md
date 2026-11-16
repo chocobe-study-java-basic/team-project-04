@@ -6,12 +6,14 @@ MySQL과 Spring Boot 실행 절차는 [프로젝트 README](../README.md)를 참
 
 ## Docker로 Backend 실행
 
-이 절차는 내 PC에서 Backend 이미지를 만들고 기존 Compose MySQL에 연결해 API 응답을 확인합니다. Docker Desktop이 실행 중이어야 합니다. 모든 명령은 프로젝트 루트에서 실행합니다.
+`compose.yaml`은 개발용 MySQL만 실행합니다. Backend는 IntelliJ에서 실행하며 기존 개발 방법을 유지합니다. `compose.deploy.yaml`은 Backend와 MySQL을 함께 컨테이너로 실행합니다. 이번에는 이 배포용 구성을 내 PC에서 검증하며, 모든 명령은 프로젝트 루트에서 실행합니다.
 
 ### 이미지 만들기
 
+Docker Desktop을 실행한 뒤 이미지를 빌드합니다.
+
 ```bash
-docker build -t outpick-backend:local ./backend
+docker build -t chocobe/outpick-backend:v0 ./backend
 ```
 
 `Dockerfile`의 첫 단계는 Java 25 JDK와 저장소의 Gradle Wrapper로 `bootJar`를 실행해 앱 JAR 파일을 만듭니다. 최종 이미지에는 Java 25 JRE와 JAR 파일을 담고, 관리자 권한이 없는 사용자로 앱을 실행합니다. 로컬에 Java를 설치하지 않아도 이미지 빌드가 가능합니다.
@@ -20,42 +22,52 @@ docker build -t outpick-backend:local ./backend
 
 `backend/`가 Docker에 전달할 파일의 기준 디렉터리입니다. `.dockerignore`는 로컬 빌드 결과와 `.env`, 키 파일 등을 제외합니다. DB 비밀번호는 이미지에 저장하지 않고 컨테이너 실행 시 전달합니다.
 
-### MySQL에 연결해서 실행하기
+### Backend와 MySQL 함께 실행하기
 
-루트 `.env`가 없다면 [MySQL 실행 안내](../README.md#mysql-실행)에 따라 먼저 작성합니다. 다음 명령으로 MySQL의 준비가 끝날 때까지 기다립니다.
+루트 `.env`가 없다면 [MySQL 실행 안내](../README.md#mysql-실행)에 따라 먼저 작성합니다. Compose가 `.env`의 값을 자동으로 읽으므로 터미널에서 `source`나 `set -a`를 실행할 필요가 없습니다. 셸에 같은 이름의 환경 변수가 등록돼 있으면 그 값이 `.env`보다 우선하므로, 앞서 값을 내보냈다면 새 터미널에서 진행합니다.
 
-```bash
-make compose-up
-```
-
-다음 명령은 기존 MySQL이 연결된 Docker 네트워크를 찾습니다. 이 네트워크에서 Backend는 `mysql:3306`으로 DB에 접근합니다. 컨테이너 안의 `localhost`는 Backend 자신을 가리키므로 DB 주소로 사용하지 않습니다.
+먼저 설정을 검사합니다. `--quiet`는 비밀번호가 포함된 설정을 화면에 출력하지 않습니다.
 
 ```bash
-MYSQL_CONTAINER_ID=$(docker compose ps -q mysql)
-MYSQL_NETWORK=$(docker inspect "$MYSQL_CONTAINER_ID" --format '{{range .NetworkSettings.Networks}}{{.NetworkID}}{{end}}')
+docker compose -f compose.deploy.yaml config --quiet
 ```
 
-전용 터미널에서 `.env`의 값을 읽고 Backend를 실행합니다. `.env`는 루트 README의 작성 규칙을 따릅니다. `MYSQL_ROOT_PASSWORD`는 Backend에 전달하지 않습니다.
+오류 없이 끝나면 실행합니다.
 
 ```bash
-set -a
-. ./.env
-set +a
-docker run --rm --name outpick-backend-local \
-  --network "$MYSQL_NETWORK" \
-  -p 127.0.0.1:18080:8080 \
-  -e SPRING_PROFILES_ACTIVE=local \
-  -e MYSQL_HOST=mysql \
-  -e MYSQL_PORT=3306 \
-  -e MYSQL_DATABASE -e MYSQL_USER -e MYSQL_PASSWORD \
-  outpick-backend:local
+docker compose -f compose.deploy.yaml up -d --wait --wait-timeout 180
 ```
 
-`18080:8080`은 내 PC의 18080 포트를 컨테이너의 8080 포트로 연결합니다. IntelliJ로 실행 중인 앱의 기본 8080 포트와 함께 사용할 수 있습니다. DB 연결에는 MySQL 컨테이너 내부의 3306 포트를 사용하므로 `.env`의 PC용 `MYSQL_PORT`와 별도로 지정합니다.
+Compose는 다음 순서로 실행합니다.
+
+1. `outpick-network` 네트워크와 MySQL 데이터 볼륨을 준비합니다.
+2. MySQL이 앱용 계정으로 SQL 요청을 처리할 수 있는지 healthcheck로 확인합니다.
+3. MySQL이 `healthy`가 되면 Backend를 실행합니다.
+
+`--wait`는 MySQL의 정상 상태와 Backend 컨테이너 실행까지 기다립니다. Backend에는 별도 healthcheck가 없으므로 앱 시작 완료 여부는 다음 단계에서 로그와 API로 확인합니다. `restart: unless-stopped`는 오류 종료나 Docker 엔진 재시작 시 컨테이너를 다시 실행하되, 직접 중지한 컨테이너는 중지 상태로 유지하는 설정입니다.
+
+주요 설정은 다음과 같습니다.
+
+| 설정 | 역할 |
+|---|---|
+| `name: outpick-deploy` | 개발용과 컨테이너·데이터 볼륨을 분리하는 Compose 프로젝트 이름 |
+| `networks.default.name: outpick-network` | 두 서비스를 자동으로 연결할 실제 네트워크 이름 |
+| `MYSQL_HOST=mysql`, `MYSQL_PORT=3306` | Backend가 Docker 네트워크 안에서 접근할 MySQL 주소 |
+| `127.0.0.1:18080:8080` | 내 PC의 18080 포트를 Backend 컨테이너의 8080 포트에 연결 |
+| `outpick-deploy_mysql-data` 볼륨 | 개발용과 별도로 MySQL 데이터를 보관 |
+
+MySQL은 호스트에 포트를 공개하지 않습니다. `.env`의 `MYSQL_PORT`는 개발용 MySQL에만 사용하며, 배포용 Backend는 MySQL 컨테이너 내부 포트 3306을 사용합니다. `MYSQL_ROOT_PASSWORD`는 MySQL 초기화에만 전달하고 Backend에는 전달하지 않습니다.
+
+현재 앱에 DB 접속 설정이 있는 프로필은 `local`이므로 배포용 Compose에서도 이를 명시합니다. 이 파일의 이름만으로 Spring의 운영용 프로필이 적용되지는 않습니다. 운영용 프로필과 CORS 정책은 EC2 배포 단계에서 정합니다.
 
 ### 응답 확인과 종료
 
-로그에 `Started BackendApplication`이 나오면 다른 터미널에서 확인합니다.
+```bash
+docker compose -f compose.deploy.yaml ps
+docker compose -f compose.deploy.yaml logs --tail 100 backend
+```
+
+로그에 `Started BackendApplication`이 나오면 API를 확인합니다.
 
 ```bash
 curl --fail http://localhost:18080/actuator/health
@@ -64,13 +76,32 @@ curl --fail http://localhost:18080/api/v1/examples/1
 
 첫 요청의 `status`는 `UP`이어야 합니다. 두 번째 요청은 `{"name":"예시 액티비티","participantCount":3}`을 반환해야 합니다. 예시 API는 고정 데이터를 반환하므로 DB 연결은 health 응답과 시작 로그로 함께 확인합니다.
 
-앱을 실행한 터미널에서 `Ctrl+C`를 누르면 Backend가 종료되고 `--rm`에 의해 해당 컨테이너가 삭제됩니다. 이미지는 남으며 MySQL과 데이터 볼륨도 유지됩니다.
+배포용 컨테이너를 종료하고 네트워크를 정리하려면 다음 명령을 사용합니다.
 
-이 단계는 로컬 검증입니다. Mac의 Apple Silicon은 ARM64이고 현재 EC2의 t3.small은 AMD64이므로, 기본 명령으로 만든 Mac용 이미지를 EC2에 그대로 옮겨 실행할 수는 없습니다. EC2 배포 단계에서는 대상에 맞게 `linux/amd64` 이미지를 빌드합니다. 운영용 설정·이미지 업로드·EC2 배포는 후속 작업입니다.
+```bash
+docker compose -f compose.deploy.yaml down
+```
 
-참고: [Docker의 여러 단계 빌드](https://docs.docker.com/build/building/multi-stage/), [Eclipse Temurin 공식 이미지](https://hub.docker.com/_/eclipse-temurin).
+이미지와 MySQL 데이터 볼륨은 유지됩니다. `down --volumes`는 DB 데이터까지 삭제하므로 데이터 보존이 필요할 때 사용하지 않습니다. 이후에도 동일한 `up` 명령으로 기존 데이터를 사용해 실행할 수 있습니다. 기존 볼륨의 DB 계정·비밀번호는 `.env`를 바꾸는 것만으로 변경되지 않습니다.
 
-2026-11-16 Apple Silicon Mac에서 이미지 빌드, 관리자 권한이 없는 사용자 `10001:10001`로 실행, MySQL 연결, health의 `UP`, 예시 API 정상 응답을 확인했습니다. 기존 Backend 테스트 38개도 모두 통과했습니다. EC2용 AMD64 이미지 빌드·실행은 아직 확인하지 않았습니다.
+개발용과 배포용은 서로 다른 DB입니다. 개발용 데이터는 배포용으로 자동 복사되지 않습니다. 개발용 종료에는 기존 `make compose-down`을 사용하고, 배포용 종료에는 위의 `-f compose.deploy.yaml down`을 사용합니다.
+
+코드 변경 후에는 이미지를 다시 빌드하고 Backend 컨테이너를 교체합니다. MySQL은 그대로 유지합니다.
+
+```bash
+docker build -t chocobe/outpick-backend:v0 ./backend
+docker compose -f compose.deploy.yaml up -d --no-deps --force-recreate backend
+```
+
+이 단계는 로컬 검증입니다. Backend는 루프백 주소에만 공개하므로 EC2 외부에서 직접 접근할 수는 없습니다. 이후 Nginx와 도메인을 연결할 때 외부 접근 경로를 구성합니다.
+
+Mac의 Apple Silicon은 ARM64이고 현재 EC2의 t3.small은 AMD64입니다. 기본 명령으로 만든 Mac용 이미지를 EC2에 그대로 옮겨 실행할 수는 없습니다. EC2 배포 단계에서는 `linux/amd64` 이미지를 빌드하고 서버에서 이미지를 받을 방법을 준비합니다. 이미지 업로드·EC2 배포는 후속 작업입니다.
+
+참고: [Docker의 여러 단계 빌드](https://docs.docker.com/build/building/multi-stage/), [Compose 시작 순서](https://docs.docker.com/compose/how-tos/startup-order/).
+
+2026-11-16 Apple Silicon Mac에서 Docker 이미지 빌드와 수동 컨테이너 실행으로 MySQL 연결, health의 `UP`, 예시 API 정상 응답을 확인했습니다. 기존 Backend 테스트 38개도 모두 통과했습니다. EC2용 AMD64 이미지 빌드·실행은 아직 확인하지 않았습니다.
+
+같은 날 `chocobe/outpick-backend:v0`로 배포용 Compose 설정 검사, MySQL 준비 후 Backend 시작, 공통 네트워크에서의 DB 연결, health의 `UP`, 예시 API 정상 응답을 확인했습니다. 개발용 서비스는 MySQL만 유지되며, 배포용 DB 볼륨이 별도로 생성되는 것도 확인했습니다. 이 Compose 작업에서는 앱 코드를 변경하지 않아 기존 Java 테스트를 다시 실행하지 않았습니다.
 
 ## 장소 저장 모델
 

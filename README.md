@@ -111,6 +111,8 @@ make compose-reset
 
 이 Compose 구성은 로컬 개발용입니다. 운영 DB와 비밀 정보 관리는 배포 구조를 정할 때 별도로 구성합니다.
 
+Backend와 MySQL을 함께 컨테이너로 실행할 때는 별도의 `compose.deploy.yaml`을 사용합니다. IntelliJ 개발은 기존 `compose.yaml`을 그대로 사용합니다. 이미지 빌드·배포용 Compose 실행·종료는 [Backend Docker 실행 안내](backend/README.md#docker로-backend-실행)를 참고하세요.
+
 ## Frontend 개발 환경
 
 Next.js·TypeScript 기반 Frontend의 Node 버전, 실행·검사·테스트·정적 빌드 방법은 [Frontend README](frontend/README.md)를 참고합니다. 공통 기반과 로컬 브라우저 검증을 마쳤으며, Zustand는 공유할 UI 상태가 확정될 때까지 보류합니다.
