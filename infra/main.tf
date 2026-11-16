@@ -177,6 +177,11 @@ resource "aws_instance" "app" {
   instance_type = var.instance_type
   key_name      = data.aws_key_pair.ssh.key_name
 
+  user_data                   = file("${path.module}/scripts/install-docker.sh")
+  user_data_replace_on_change = true
+
+  depends_on = [aws_route_table_association.public]
+
   volume_tags = merge(local.common_tags, {
     Name = "${local.name_prefix}root-volume"
   })
