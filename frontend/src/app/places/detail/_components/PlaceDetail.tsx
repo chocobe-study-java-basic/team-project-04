@@ -42,7 +42,7 @@ export default function PlaceDetail() {
           <section className="outpick-detailEmpty" role="alert"><h1>장소 정보를 불러오지 못했어요</h1><p>서버 연결을 확인하고 다시 시도해 주세요.</p><button type="button" className="outpick-returnButton" onClick={() => void detail.refetch()}>다시 시도</button></section>
         ) : !place ? <p role="status">장소 정보를 불러오고 있어요.</p> : (
           <>
-            <p className="outpick-detailSample">{place.name?.startsWith('[데모]') ? '개발용 가상 장소 · 실제 시설·주소·운영 정보가 아닙니다.' : 'DB 조회 정보 · 미확인 항목은 미확인으로 표시합니다.'}</p>
+            <p className="outpick-detailSample">{place.name?.startsWith('[데모]') ? '개발용 가상 장소 · 실제 시설·주소·운영 정보가 아닙니다.' : '방문 전 공식 안내를 확인하세요. 미확인 항목은 미확인으로 표시합니다.'}</p>
             <div className="outpick-detailHero">
               <div className="outpick-detailIntro">
                 <p className="outpick-detailEyebrow">EXPLORE THE OUTSIDE</p>
@@ -100,7 +100,7 @@ export default function PlaceDetail() {
                   <div><dt>공식 홈페이지</dt><dd>{homepage ? <a href={homepage} target="_blank" rel="noopener noreferrer">공식 안내 열기 ↗</a> : '미등록'}</dd></div>
                 </dl>
                 {place.latitude !== null && place.longitude !== null && <a className="outpick-returnButton" target="_blank" rel="noopener noreferrer" href={`https://map.kakao.com/link/to/${encodeURIComponent(place.name ?? '장소')},${place.latitude},${place.longitude}`}>카카오맵 길찾기 ↗</a>}
-                <p className="outpick-visitNote">방문 전 공식 안내를 확인하세요. [데모] 장소의 좌표와 주소는 실제 시설 위치가 아닙니다.</p>
+                <p className="outpick-visitNote">{place.name?.startsWith('[데모]') ? '방문 전 공식 안내를 확인하세요. [데모] 장소의 좌표와 주소는 실제 시설 위치가 아닙니다.' : '방문 전 운영시간과 이용 조건을 공식 안내에서 확인하세요.'}</p>
                 <Link href={returnUrl} scroll={false} className="outpick-returnButton">다른 장소 살펴보기</Link>
               </aside>
             </div>

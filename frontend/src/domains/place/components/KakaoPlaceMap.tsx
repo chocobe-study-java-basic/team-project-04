@@ -170,7 +170,7 @@ export default function KakaoPlaceMap({ places, selectedId, onSelect, onBoundsCh
   return (
     <div className="outpick-mapStage">
       <div ref={container} className="outpick-mapCanvas" role="region" aria-label="장소 지도" />
-      <p className="outpick-mapDisclaimer">현재 페이지의 장소 · 데모 좌표는 실제 시설 위치가 아닙니다</p>
+      <p className="outpick-mapDisclaimer">{places.some(place => place.name?.startsWith('[데모]')) ? '현재 페이지의 장소 · 데모 좌표는 실제 시설 위치가 아닙니다' : '현재 페이지의 장소를 표시합니다'}</p>
       {!context && !error && <p className="outpick-mapMessage" role="status">지도를 불러오고 있어요.</p>}
       {error && (
         <div className="outpick-mapMessage" role="alert">

@@ -141,7 +141,7 @@ export default function PlaceExplorer() {
             </select></label>
             <button type="button" className="outpick-reset" onClick={resetFilters}>필터 초기화</button>
           </div>
-          <p className="outpick-sampleNotice">DB에서 조회한 장소 · [데모] 표시는 가상 장소이며 실제 시설 정보가 아닙니다.</p>
+          {places.some(place => place.name?.startsWith('[데모]')) && <p className="outpick-sampleNotice">[데모] 표시는 가상 장소이며 실제 시설 정보가 아닙니다.</p>}
           <p className="outpick-sampleNotice">지도를 이동하면 자동 검색해요. 지도에는 현재 페이지의 장소만 표시돼요.</p>
           {failed ? <div className="outpick-empty" role="alert"><h2>장소를 불러오지 못했어요</h2><p>서버 연결을 확인하고 다시 시도해 주세요.</p><button type="button" onClick={() => { if (catalog.isError) void catalog.refetch(); else void placeQuery.refetch(); }}>다시 시도</button></div> : loading ? <p role="status">장소 정보를 조회하고 있어요.</p> : places.length > 0 ? (
             <ul className="outpick-cards" aria-label="장소 목록">
