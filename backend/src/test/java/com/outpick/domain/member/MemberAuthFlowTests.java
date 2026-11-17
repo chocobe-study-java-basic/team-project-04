@@ -84,5 +84,17 @@ class MemberAuthFlowTests {
                 .andExpect(jsonPath("$.email").value("test@example.com"))
                 .andExpect(jsonPath("$.nickname").value("영빈"))
                 .andExpect(jsonPath("$.passwordHash").doesNotExist());
+
+        mvc.perform(post("/api/v1/auth/logout").session((org.springframework.mock.web.MockHttpSession) session))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/members/me").session((org.springframework.mock.web.MockHttpSession) session))
+                .andExpect(status().isOk());
+
+        mvc.perform(post("/api/v1/auth/logout").session((org.springframework.mock.web.MockHttpSession) session)
+                        .header(header, csrf))
+                .andExpect(status().isNoContent());
+        assertThat(((org.springframework.mock.web.MockHttpSession) session).isInvalid()).isTrue();
+        mvc.perform(get("/api/v1/members/me"))
+                .andExpect(status().isUnauthorized());
     }
 }
