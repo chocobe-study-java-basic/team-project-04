@@ -70,4 +70,9 @@ public class Member {
         authVersion++;
     }
 
+    public void changePassword(String encodedPassword) {
+        passwordHash = encodedPassword;
+        revokeSessions();
+    }
+
 }
