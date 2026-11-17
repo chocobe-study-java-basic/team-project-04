@@ -1,0 +1,184 @@
+'use client';
+
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import type { MouseEvent } from 'react';
+import type { PlaceSearchFilters } from './place-list.type';
+import { categories, defaultFilters, readPlaceSearchParams, seasons, writePlaceSearchParams } from './placeSearchParams';
+import PlaceSearchForm from './PlaceSearchForm';
+import PlaceArtwork from '@/domains/place/components/PlaceArtwork';
+import KakaoPlaceMap from '@/domains/place/components/KakaoPlaceMap';
+import CopyPlaceLinkButton from '@/domains/place/components/CopyPlaceLinkButton';
+import type { PlaceMapBounds, PlaceMapView } from '@/domains/place/types/kakaoMap.type';
+import { readPlaceMapBounds, readPlaceMapParams, writePlaceMapParams } from '@/domains/place/lib/placeMapParams';
+import { samplePlaces } from '@/domains/place/data/samplePlaces';
+import { getPlaceDetailUrl, rememberPlaceListPosition, takePlaceListPosition } from '@/domains/place/lib/placeNavigation';
+import './PlaceExplorer.css';
+
+export default function PlaceExplorer() {
+  const searchParams = useSearchParams();
+  const { query: search, category, region, season, environment, sort } = readPlaceSearchParams(searchParams);
+  const [formResetCount, setFormResetCount] = useState(0);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [mobileMap, setMobileMap] = useState(false);
+  const mapBounds = useMemo(() => readPlaceMapBounds(searchParams), [searchParams]);
+  const listUrl = `/${searchParams.size ? `?${searchParams}` : ''}`;
+  const mapView = readPlaceMapParams(searchParams);
+
+  function changeMapBounds(bounds: PlaceMapBounds, view: PlaceMapView) {
+    const params = writePlaceMapParams(new URLSearchParams(window.location.search), view, bounds);
+    const nextUrl = `${window.location.pathname}?${params}${window.location.hash}`;
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    // 지도 이동은 현재 기록만 갱신해서 뒤로 가기에 지도 이동 기록이 쌓이지 않게 합니다.
+    if (nextUrl !== currentUrl) window.history.replaceState(null, '', nextUrl);
+  }
+
+  useEffect(() => {
+    const url = `${window.location.pathname}${window.location.search}`;
+    // Next.js의 화면 전환과 레이아웃 반영 뒤 목록의 이전 스크롤을 적용합니다.
+    const frame = window.requestAnimationFrame(() => {
+      const y = takePlaceListPosition(url);
+      if (y !== null) window.scrollTo({ top: y, behavior: 'instant' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  function rememberPosition(event: MouseEvent<HTMLAnchorElement>) {
+    if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+      rememberPlaceListPosition();
+    }
+  }
+
+  const places = useMemo(() => samplePlaces.filter(place =>
+    (!mapBounds || (place.latitude >= mapBounds.south && place.latitude <= mapBounds.north
+      && place.longitude >= mapBounds.west && place.longitude <= mapBounds.east))
+    && (!search || place.name.includes(search))
+    && (!region || place.region === region)
+    && place.activities.some(activity =>
+      (category === '전체' || activity.category === category)
+      && (!season || activity.seasons.includes(season))
+      && (!environment || activity.environment === environment)
+    )
+  ).sort((a, b) => sort === 'name'
+    ? a.name.localeCompare(b.name, 'ko') || a.id - b.id
+    : b.name.localeCompare(a.name, 'ko') || a.id - b.id), [search, region, category, season, environment, sort, mapBounds]);
+  const selectedPlace = places.find(place => place.id === selectedId);
+
+  function changeFilters(changes: Partial<PlaceSearchFilters>) {
+    const params = writePlaceSearchParams(new URLSearchParams(window.location.search), changes);
+    const queryString = params.toString();
+    const nextUrl = `${window.location.pathname}${queryString ? `?${queryString}` : ''}${window.location.hash}`;
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (nextUrl !== currentUrl) {
+      // Next.js가 History API 변경을 useSearchParams와 동기화합니다. 스크롤은 유지합니다.
+      window.history.pushState(null, '', nextUrl);
+    }
+  }
+
+  function resetFilters() {
+    changeFilters(defaultFilters);
+    setFormResetCount(count => count + 1);
+    setSelectedId(null);
+  }
+
+  return (
+    <div className="outpick-explorer">
+      <header className="outpick-header">
+        <Link href="/" className="outpick-brand" aria-label="OUTPICK 홈">
+          OUTPICK <span>밖으로, 더 멀리</span>
+        </Link>
+        <PlaceSearchForm
+          key={`${search}:${formResetCount}`}
+          initialQuery={search}
+          onSearch={query => changeFilters({ query })}
+        />
+        <div className="outpick-headerActions">
+          <span className="outpick-previewBadge">탐색 화면 미리보기</span>
+          <CopyPlaceLinkButton label="검색 링크 복사" />
+        </div>
+      </header>
+
+      <div className="outpick-toolbar">
+        <nav aria-label="활동 카테고리" className="outpick-categories">
+          {categories.map(item => (
+            <button key={item} type="button" aria-pressed={category === item} onClick={() => changeFilters({ category: item })}>{item}</button>
+          ))}
+        </nav>
+        <div className="outpick-filters">
+          <label><span className="outpick-srOnly">지역</span><select value={region} onChange={event => changeFilters({ region: event.target.value })}>
+            <option value="">지역 전체</option><option value="강원">강원</option><option value="경기">경기</option>
+          </select></label>
+          <label><span className="outpick-srOnly">시즌</span><select value={season} onChange={event => changeFilters({ season: event.target.value })}>
+            <option value="">시즌 전체</option>{seasons.map(item => <option key={item}>{item}</option>)}
+          </select></label>
+          <label><span className="outpick-srOnly">실내외</span><select value={environment} onChange={event => changeFilters({ environment: event.target.value })}>
+            <option value="">실내외 전체</option><option>실내</option><option>실외</option>
+          </select></label>
+        </div>
+      </div>
+
+      <main className="outpick-content">
+        <section aria-labelledby="results-title" className={`outpick-results ${mobileMap ? 'outpick-mobileHidden' : ''}`}>
+          <div className="outpick-intro">
+            <p className="outpick-eyebrow">EXPLORE THE OUTSIDE</p>
+            <h1 id="results-title">이번 주말, 밖에서 뭐 하지?</h1>
+            <p className="outpick-subtitle">마음이 향하는 활동, 나에게 맞는 장소를 찾아보세요.</p>
+          </div>
+          <div className="outpick-resultToolbar">
+            <p role="status">검색 결과 <strong>{places.length}곳</strong></p>
+            <label className="outpick-sort"><span className="outpick-srOnly">정렬</span><select value={sort} onChange={event => changeFilters({ sort: event.target.value })}>
+              <option value="name">이름순</option><option value="name-desc">이름 역순</option>
+            </select></label>
+            <button type="button" className="outpick-reset" onClick={resetFilters}>필터 초기화</button>
+          </div>
+          <p className="outpick-sampleNotice">샘플 데이터 · 실제 시설 및 운영 정보가 아닙니다.</p>
+          <p className="outpick-sampleNotice">지도를 이동하거나 확대하면 현재 지도 영역에서 자동 검색해요.</p>
+          {places.length > 0 ? (
+            <ul className="outpick-cards" aria-label="장소 목록">
+              {places.map(place => (
+                <li key={place.id}>
+                  <article className={`outpick-placeCard ${selectedPlace?.id === place.id ? 'outpick-placeCardSelected' : ''}`}>
+                    <button type="button" aria-pressed={selectedPlace?.id === place.id} className="outpick-card" onClick={() => setSelectedId(place.id)}>
+                      <PlaceArtwork artwork={place.artwork} />
+                      <div className="outpick-cardBody">
+                        <p className="outpick-location">{place.region} · {place.area}</p>
+                        <h2>{place.name}</h2>
+                        <p className="outpick-description">{place.description}</p>
+                        <div className="outpick-tags">{place.activities.map(activity => <span key={activity.name}>{activity.name}</span>)}</div>
+                        <span className="outpick-selectHint">{selectedPlace?.id === place.id ? '선택한 장소' : '장소 선택'} <span aria-hidden="true">↗</span></span>
+                      </div>
+                    </button>
+                    <Link className="outpick-detailLink" aria-label={`${place.name} 상세 보기`} href={getPlaceDetailUrl(place.id, listUrl)} onClick={rememberPosition}>
+                      상세 보기 <span aria-hidden="true">→</span>
+                    </Link>
+                  </article>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="outpick-empty">
+              <span aria-hidden="true">⌕</span>
+              <h2>조건에 맞는 장소가 없어요</h2>
+              <p>지역이나 활동 조건을 바꾸고 다시 찾아보세요.</p>
+              <button type="button" onClick={resetFilters}>전체 장소 보기</button>
+            </div>
+          )}
+          <footer className="outpick-footer">OUTPICK · 이번 주말, 밖에서 뭐 하지?</footer>
+        </section>
+
+        <aside aria-label="장소 지도" className={`outpick-mapPanel ${!mobileMap ? 'outpick-mapMobileHidden' : ''}`}>
+          <KakaoPlaceMap places={places} selectedId={selectedPlace?.id ?? null} onSelect={setSelectedId} onBoundsChange={changeMapBounds} view={mapView} />
+          {selectedPlace && (
+            <div className="outpick-mapSelection" aria-live="polite">
+              <span>선택한 샘플 장소</span><h3>{selectedPlace.name}</h3>
+              <p>{selectedPlace.region} · {selectedPlace.area} · {selectedPlace.activities.map(activity => activity.name).join(' / ')}</p>
+              <Link className="outpick-detailLink" href={getPlaceDetailUrl(selectedPlace.id, listUrl)} onClick={rememberPosition}>장소 상세 보기 →</Link>
+            </div>
+          )}
+        </aside>
+      </main>
+      <button type="button" className="outpick-mobileToggle" aria-pressed={mobileMap} onClick={() => setMobileMap(!mobileMap)}>{mobileMap ? '목록 보기' : '지도 보기'}</button>
+    </div>
+  );
+}
