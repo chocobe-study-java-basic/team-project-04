@@ -30,6 +30,16 @@ variable "key_pair_name" {
   default     = "devcos-team05--ec2-keypair"
 }
 
+variable "eip_allocation_id" {
+  description = "서울 리전에 미리 할당해 보관하는 팀 EIP의 할당 ID. 예: eipalloc-0123456789abcdef0"
+  type        = string
+
+  validation {
+    condition     = can(regex("^eipalloc-([0-9a-f]{8}|[0-9a-f]{17})$", var.eip_allocation_id))
+    error_message = "EIP 할당 ID는 eipalloc- 뒤에 8자리 또는 17자리 16진수가 오는 형식으로 입력해 주세요."
+  }
+}
+
 variable "instance_type" {
   description = "EC2 사양. 처음에는 t3.small을 사용하고 메모리 확장이 필요하면 t3.medium을 검토합니다."
   type        = string

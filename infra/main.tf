@@ -220,16 +220,13 @@ resource "aws_instance" "app" {
   }
 }
 
-resource "aws_eip" "app" {
-  domain = "vpc"
-
-  tags = {
-    Name = "${local.name_prefix}eip"
-  }
+# 콘솔에서 보관하는 EIP를 조회합니다. EC2를 삭제해도 이 주소는 유지합니다.
+data "aws_eip" "app" {
+  id = var.eip_allocation_id
 }
 
 resource "aws_eip_association" "app" {
-  allocation_id        = aws_eip.app.id
+  allocation_id        = data.aws_eip.app.id
   network_interface_id = aws_network_interface.ec2.id
 
   depends_on = [aws_instance.app, aws_internet_gateway.main]

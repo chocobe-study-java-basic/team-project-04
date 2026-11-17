@@ -5,7 +5,7 @@ output "instance_id" {
 
 output "public_ip" {
   description = "EC2에 연결할 탄력적 IP. 실제 연결은 apply 완료 후 확인합니다."
-  value       = aws_eip.app.public_ip
+  value       = data.aws_eip.app.public_ip
 }
 
 output "vpc_id" {
