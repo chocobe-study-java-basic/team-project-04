@@ -13,7 +13,7 @@ describe('회원 API 연결', () => {
         expect(request.headers.get('X-CSRF-TOKEN')).toBe('csrf-123');
         expect(await request.json()).toEqual({ email: 'test@example.com', password: 'secret' });
         return HttpResponse.json({ id: 1, email: 'test@example.com', nickname: '테스터' });
-      }),
+      })
     );
     await expect(login({ email: 'test@example.com', password: 'secret' }))
       .resolves.toMatchObject({ id: 1, nickname: '테스터' });
@@ -22,7 +22,7 @@ describe('회원 API 연결', () => {
   it('재설정 요청은 서버의 동일 안내 문구를 전달한다', async () => {
     server.use(
       http.get(`${base}/auth/csrf`, () => HttpResponse.json({ token: 'csrf-123', headerName: 'X-CSRF-TOKEN' })),
-      http.post(`${base}/auth/password-reset/request`, () => HttpResponse.json({ message: '안내 메일이 발송됩니다.' })),
+      http.post(`${base}/auth/password-reset/request`, () => HttpResponse.json({ message: '안내 메일이 발송됩니다.' }))
     );
     await expect(requestPasswordReset('unknown@example.com')).resolves.toBe('안내 메일이 발송됩니다.');
   });
@@ -34,7 +34,7 @@ describe('회원 API 연결', () => {
         expect(request.headers.get('X-CSRF-TOKEN')).toBe('csrf-123');
         expect(await request.json()).toEqual({ password: 'secret', confirmed: true });
         return HttpResponse.json({ message: '회원 탈퇴가 완료되었습니다.' });
-      }),
+      })
     );
     await expect(withdraw('secret')).resolves.toBe('회원 탈퇴가 완료되었습니다.');
   });

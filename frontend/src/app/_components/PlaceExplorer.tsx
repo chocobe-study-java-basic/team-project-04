@@ -103,8 +103,11 @@ export default function PlaceExplorer() {
         <div className="outpick-headerActions">
           <span className="outpick-previewBadge">탐색 화면 미리보기</span>
           <CopyPlaceLinkButton label="검색 링크 복사" />
+          <Link className="outpick-accountLink" href="/login/">로그인</Link>
         </div>
       </header>
+
+      {searchParams.has('withdrawn') && <p className="outpick-accountNotice" role="status">회원 탈퇴가 완료되었습니다.</p>}
 
       <div className="outpick-toolbar">
         <nav aria-label="활동 카테고리" className="outpick-categories">
