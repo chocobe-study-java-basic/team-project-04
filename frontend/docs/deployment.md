@@ -87,7 +87,7 @@ curl -i -w '\n' http://localhost/api/v1/examples/1
 
 `pull`은 Compose의 이미지를 내려받는다. `up`은 이미지가 바뀐 서비스를 교체한다. `curl -i`는 상태 코드·헤더·본문을 보여주고, `-w '\n'`은 마지막에 줄바꿈을 추가한다. 화면 요청은 HTTP 200의 HTML, API 요청은 HTTP 200의 예시 JSON이어야 한다. 앱 시작 직후 API가 502이면 Backend 시작 로그를 확인한 뒤 다시 요청한다.
 
-마지막으로 Mac 브라우저에서 `http://EC2_PUBLIC_IP/main-example/`을 열고 로컬에서 확인한 조회·오류 안내·재조회·새로고침을 확인한다. 아직 HTTP 단계이며 도메인과 HTTPS 연결은 후속 작업이다. 없는 화면 경로는 404를 반환한다. Swagger와 Actuator는 외부로 전달하지 않는다.
+마지막으로 Mac 브라우저에서 `http://EC2_PUBLIC_IP/main-example/`을 열고 로컬에서 확인한 조회·오류 안내·재조회·새로고침을 확인한다. 여기까지는 HTTP 단계다. 도메인 연결 이후에는 [HTTPS 실행과 인증서 재사용 안내](../../infra/https.md)를 따르고, 이후 Compose 명령에 `-f compose.https.yaml`도 함께 지정한다. 없는 화면 경로는 404를 반환한다. Swagger와 Actuator는 외부로 전달하지 않는다.
 
 참고: [Next.js 정적 배포](https://nextjs.org/docs/app/guides/static-exports), [빌드 시 공개 환경변수](https://nextjs.org/docs/app/guides/environment-variables), [Nginx 파일 탐색](https://nginx.org/en/docs/http/ngx_http_core_module.html#try_files).
 

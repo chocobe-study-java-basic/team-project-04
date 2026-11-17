@@ -48,9 +48,20 @@ services:
         read_only: true
         bind:
           create_host_path: false
+      - letsencrypt:/etc/letsencrypt:ro
+      - certbot-webroot:/var/www/certbot:ro
+
+  certbot:
+    image: certbot/certbot:v5.10.0
+    profiles: ["tools"]
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot-webroot:/var/www/certbot
 
 volumes:
   mysql-data:
+  letsencrypt:
+  certbot-webroot:
 
 networks:
   default:

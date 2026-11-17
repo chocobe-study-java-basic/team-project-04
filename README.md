@@ -165,3 +165,7 @@ docker compose -f compose.deploy.yaml up -d --wait
 Next.js·TypeScript 기반 Frontend의 Node 버전, 실행·검사·테스트·정적 빌드 방법은 [Frontend README](frontend/README.md)를 참고합니다. 공통 기반과 로컬 브라우저 검증을 마쳤으며, Zustand는 공유할 UI 상태가 확정될 때까지 보류합니다.
 
 Frontend Docker 이미지 빌드와 기존 EC2에서의 화면·API 확인은 [Frontend 배포 안내](frontend/docs/deployment.md)를 참고합니다.
+
+## 도메인과 HTTPS 배포
+
+`outpick.chocobe.shop`의 HTTPS 설정과 인증서 발급·자동 갱신·EC2 재생성 시 백업 복원은 [HTTPS 실행 안내](infra/https.md)를 참고합니다. HTTPS 적용 후 배포에는 `compose.deploy.yaml`과 `compose.https.yaml`을 함께 지정합니다.
