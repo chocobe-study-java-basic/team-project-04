@@ -14,10 +14,10 @@
 Docker Desktop을 실행하고 프로젝트 루트에서 이미지를 만든다.
 
 ```bash
-docker build -t chocobe/outpick-frontend:v0 ./frontend
+make frontend-docker-build
 ```
 
-`-t`는 이미지 이름과 태그를 지정한다. `./frontend`는 Docker에 전달할 파일의 기준 디렉터리다. `.dockerignore`는 개인 `.env` 파일·키 파일·기존 빌드 결과를 제외한다. 기본 API 주소는 `/`이며 로컬 개발용 `.env.local`은 읽지 않는다. 이미지 빌드는 테스트를 실행하지 않으므로 기존 Frontend 검사와 테스트는 별도로 실행한다.
+이 명령은 AMD64·ARM64를 함께 빌드하고 `--load`로 로컬 Docker에 저장한다. Docker Desktop의 containerd 이미지 저장소가 필요하며, Windows는 Linux 컨테이너 모드를 사용한다. `IMAGE_TAG`를 생략하면 `v0`를 사용한다. `.dockerignore`는 개인 `.env` 파일·키 파일·기존 빌드 결과를 제외한다. 기본 API 주소는 `/`이며 로컬 개발용 `.env.local`은 읽지 않는다. 이미지 빌드는 테스트를 실행하지 않으므로 기존 Frontend 검사와 테스트는 별도로 실행한다.
 
 루트 `.env`가 없다면 [MySQL 실행 안내](../../README.md#mysql-실행)에 따라 작성한다. Backend 이미지는 기존 `chocobe/outpick-backend:v0`를 사용한다. 각 명령이 성공한 뒤 다음 명령을 실행한다.
 
@@ -40,13 +40,21 @@ docker compose -f compose.deploy.yaml down
 
 ## Mac에서 Docker Hub에 업로드하기
 
+앞 단계에서 멀티 플랫폼 빌드한 결과를 그대로 업로드하려면 다음 명령을 실행한다. 태그를 바꿨다면 동일한 태그를 지정한다. `--platform`을 지정하지 않으면 로컬에 저장한 두 플랫폼이 함께 업로드된다.
+
+```bash
+docker push chocobe/outpick-frontend:v0
+```
+
 로컬 검증 후 프로젝트 루트에서 ARM64와 AMD64 이미지를 함께 빌드해 올린다. Docker Hub 로그인이 필요하며 저장소를 Public으로 공개해야 EC2에서 로그인 없이 내려받을 수 있다.
 
 ```bash
-docker buildx build --platform linux/amd64,linux/arm64 -t chocobe/outpick-frontend:v0 --push ./frontend
+make frontend-docker-build-push
 ```
 
-`--platform`은 EC2용 AMD64와 Mac용 ARM64를 지정한다. `--push`는 완성한 이미지를 Docker Hub에 업로드한다. 기본 빌드에서는 카카오 지도 키를 넣지 않으므로 지도 영역에 키 누락 안내가 표시된다. 예시 API 배포 확인에는 필요하지 않다. 실제 지도 연결은 JavaScript 키를 `NEXT_PUBLIC_KAKAO_MAP_JS_KEY` 빌드 인자로 전달하고 Kakao에 서비스 도메인을 등록한 뒤 다시 빌드한다. 이 키는 브라우저에 공개되며 REST API·Admin 키는 사용하지 않는다.
+이 명령은 `docker buildx build --platform linux/amd64,linux/arm64 -t chocobe/outpick-frontend:v0 --push ./frontend`를 실행한다. `--platform`은 EC2용 AMD64와 Mac용 ARM64를 지정한다. `--push`는 완성한 이미지를 Docker Hub에 업로드한다. 태그는 `IMAGE_TAG=v1`처럼 변경할 수 있다. Backend도 변경했다면 `make backend-docker-build-push`로 함께 빌드·업로드한다. 별도의 로컬 빌드나 `docker push`는 필요하지 않다.
+
+기본 빌드에서는 카카오 지도 키를 넣지 않으므로 지도 영역에 키 누락 안내가 표시된다. 예시 API 배포 확인에는 필요하지 않다. 실제 지도 연결은 JavaScript 키를 `NEXT_PUBLIC_KAKAO_MAP_JS_KEY` 빌드 인자로 전달하고 Kakao에 서비스 도메인을 등록한 뒤 다시 빌드한다. 이 키는 브라우저에 공개되며 REST API·Admin 키는 사용하지 않는다.
 
 ## Mac에서 배포 파일 업로드하기
 
@@ -91,3 +99,5 @@ curl -i -w '\n' http://localhost/api/v1/examples/1
 - Next.js의 화면 이동용 `index.txt`가 제공되고, 없는 화면·Swagger·Actuator 요청은 HTTP 404를 반환했다.
 
 브라우저 자동 확인 도구에 연결할 수 없어 버튼 동작·화면 이동·새로고침은 아직 확인하지 않았다. Docker Hub 업로드·AMD64 이미지 실행·EC2 적용도 이번 로컬 검증에 포함하지 않는다. 기존 Backend 코드는 변경하지 않았으며 Java 테스트는 다시 실행하지 않았다.
+
+이후 Makefile의 멀티 플랫폼 로컬 저장 명령을 추가하며 `make backend-docker-build frontend-docker-build IMAGE_TAG=multi-check`를 실제 실행했다. 두 이미지 모두 빌드에 성공했고, `docker image ls --tree --filter 'reference=chocobe/outpick-*:multi-check'`로 각각 `linux/amd64`와 `linux/arm64`가 로컬에 저장된 것을 확인했다. 검증용 태그는 로컬에 보관하며 Docker Hub Push는 실행하지 않았다.
