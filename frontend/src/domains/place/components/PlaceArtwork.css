@@ -1,0 +1,15 @@
+.outpick-artwork { position: relative; aspect-ratio: 1.65; overflow: hidden; background: linear-gradient(160deg, #b5d2e9, #eaf3fa); }
+.outpick-snow { background: linear-gradient(160deg, #b5d2e9, #eaf3fa); }
+.outpick-artworkSun { position: absolute; top: 16%; right: 18%; width: 20%; aspect-ratio: 1; border-radius: 50%; background: #ffffffa8; }
+.outpick-artworkHill, .outpick-artworkHillBack { position: absolute; bottom: -38%; left: -15%; width: 100%; height: 105%; transform: rotate(-24deg); border-radius: 25%; background: #f5faff; }
+.outpick-artworkHillBack { bottom: -48%; left: 32%; background: #d1e4f2; transform: rotate(32deg); }
+.outpick-water { background: linear-gradient(145deg, #afdcde, #4099b2); }
+.outpick-water .outpick-artworkHill { background: #e0f4ee; bottom: -70%; transform: rotate(-8deg); }
+.outpick-water .outpick-artworkHillBack { background: #7ac2ca; bottom: -60%; }
+.outpick-forest { background: linear-gradient(145deg, #d9e7d5, #6c9f82); }
+.outpick-forest .outpick-artworkHill { background: #4e7c68; }
+.outpick-forest .outpick-artworkHillBack { background: #91b79b; }
+.outpick-indoor { background: linear-gradient(145deg, #ece0ca, #c8b3ce); }
+.outpick-indoor .outpick-artworkHill { background: #f7eddd; transform: rotate(-45deg); }
+.outpick-indoor .outpick-artworkHillBack { background: #a799b9; }
+.outpick-artworkLabel { position: absolute; bottom: 12px; left: 14px; z-index: 1; color: #22364b; font-size: 8px; font-weight: 700; letter-spacing: 1.8px; }
