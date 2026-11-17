@@ -58,4 +58,9 @@ public class MemberService {
         }
         return member;
     }
+
+    @Transactional
+    public void revokeAllSessions(Long id) {
+        findActiveMember(id).revokeSessions();
+    }
 }

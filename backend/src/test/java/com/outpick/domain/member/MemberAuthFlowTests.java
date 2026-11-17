@@ -1,6 +1,7 @@
 package com.outpick.domain.member;
 
 import com.outpick.domain.member.repository.MemberRepository;
+import com.outpick.domain.member.service.MemberService;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,7 @@ class MemberAuthFlowTests {
 
     @Autowired MockMvc mvc;
     @Autowired MemberRepository members;
+    @Autowired MemberService memberService;
 
     @Test
     void signupLoginAndCurrentMemberUseTheSameSession() throws Exception {
@@ -84,5 +86,9 @@ class MemberAuthFlowTests {
                 .andExpect(jsonPath("$.email").value("test@example.com"))
                 .andExpect(jsonPath("$.nickname").value("영빈"))
                 .andExpect(jsonPath("$.passwordHash").doesNotExist());
+
+        memberService.revokeAllSessions(members.findByEmail("test@example.com").orElseThrow().getId());
+        mvc.perform(get("/api/v1/members/me").session((org.springframework.mock.web.MockHttpSession) session))
+                .andExpect(status().isUnauthorized());
     }
 }

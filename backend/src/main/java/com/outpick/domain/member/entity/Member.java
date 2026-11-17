@@ -36,6 +36,9 @@ public class Member {
     @Column(nullable = false, length = 20)
     private String status = "ACTIVE";
 
+    @Column(name = "auth_version", nullable = false)
+    private long authVersion;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -61,6 +64,10 @@ public class Member {
     @PreUpdate
     void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    public void revokeSessions() {
+        authVersion++;
     }
 
 }

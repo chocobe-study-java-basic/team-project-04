@@ -1,5 +1,7 @@
 package com.outpick.global.config;
 
+import com.outpick.domain.member.repository.MemberRepository;
+import com.outpick.domain.member.security.MemberSessionValidationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -10,6 +12,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 
 @Configuration(proxyBeanMethods = false)
 public class SecurityConfig {
@@ -20,11 +23,13 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, SecurityContextRepository securityContextRepository) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, SecurityContextRepository securityContextRepository,
+                                            MemberRepository members) throws Exception {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(Customizer.withDefaults())
                 .securityContext(securityContext -> securityContext.securityContextRepository(securityContextRepository))
+                .addFilterAfter(new MemberSessionValidationFilter(members), SecurityContextHolderFilter.class)
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/signup").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()

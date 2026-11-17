@@ -5,6 +5,7 @@ import com.outpick.domain.member.dto.MemberResponse;
 import com.outpick.domain.member.dto.SignupRequest;
 import com.outpick.domain.member.dto.SignupResponse;
 import com.outpick.domain.member.service.MemberService;
+import com.outpick.domain.member.security.MemberSessionPrincipal;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -53,7 +54,8 @@ public class AuthController {
             request.changeSessionId();
         }
         var authentication = new UsernamePasswordAuthenticationToken(
-                member.getId(), null, java.util.List.of(new SimpleGrantedAuthority("ROLE_USER")));
+                new MemberSessionPrincipal(member.getId(), member.getAuthVersion()), null,
+                java.util.List.of(new SimpleGrantedAuthority("ROLE_USER")));
         var context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
