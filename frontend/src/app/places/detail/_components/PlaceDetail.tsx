@@ -71,6 +71,7 @@ export default function PlaceDetail() {
                     </li>
                   ))}</ul>
                   {place.activities.length === 0 && <p>등록된 활동 정보가 없습니다.</p>}
+                  <p>시즌은 활동을 찾기 위한 분류입니다. 현재 운영 여부와 방문 가능한 날짜는 공식 안내를 확인하세요.</p>
                 </section>
                 <section className="outpick-detailSection" aria-labelledby="place-notices">
                   <h2 id="place-notices">운영 안내 및 공지</h2>
