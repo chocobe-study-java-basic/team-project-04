@@ -9,9 +9,11 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import lombok.Getter;
 
 @Entity
 @Table(name = "user")
+@Getter
 public class Member {
 
     @Id
@@ -61,27 +63,4 @@ public class Member {
         updatedAt = LocalDateTime.now();
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public String getNickname() {
-        return nickname;
-    }
-
-    public String getPasswordHash() {
-        return passwordHash;
-    }
-
-    public String getRole() {
-        return role;
-    }
-
-    public String getStatus() {
-        return status;
-    }
 }
