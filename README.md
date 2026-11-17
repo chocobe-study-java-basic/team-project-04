@@ -72,7 +72,7 @@ cd backend
 
 다른 환경에서는 `SPRING_PROFILES_ACTIVE`로 profile을 명시합니다. 예를 들어 `prod`를 지정하면 기본 `local` 설정은 적용되지 않습니다. 운영용 설정은 아직 추가하지 않았습니다.
 
-애플리케이션이 시작되면 Flyway가 `flyway_schema_history`를 생성합니다. 아직 마이그레이션 SQL과 도메인 테이블은 없으므로 적용된 마이그레이션은 0개입니다. Hibernate는 테이블을 자동 생성하지 않습니다. 첫 도메인 변경 시 `backend/src/main/resources/db/migration/V1__설명.sql`을 추가합니다.
+애플리케이션이 시작되면 Flyway가 `flyway_schema_history`와 `V1__create_place_tables.sql`의 장소 관련 8개 테이블을 생성합니다. Hibernate는 테이블을 자동 생성하지 않습니다. 적용한 마이그레이션을 수정하지 않고 후속 변경은 `V2__설명.sql` 등 새 파일로 추가합니다. 구현 범위와 미정 정책은 [장소 모델 문서](backend/docs/place-model.md)를 참고하세요.
 
 ```bash
 curl --fail http://localhost:8080/actuator/health
