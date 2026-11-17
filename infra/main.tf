@@ -102,6 +102,14 @@ resource "aws_security_group" "ec2" {
     cidr_blocks = [var.ssh_allowed_cidr]
   }
 
+  ingress {
+    description = "HTTP to Nginx"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     description = "Outbound access for package and image downloads"
     from_port   = 0

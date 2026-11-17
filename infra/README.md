@@ -21,7 +21,7 @@ VPC는 프로젝트의 네트워크이고, 서브넷은 그 안에서 서버를 
 
 모든 태그 지원 대상에 `Team = devcos-team05`, `Project = outpick`, `ManagedBy = terraform`을 적용합니다. `Name` 값에는 `devcos-team05--` 접두사를 붙입니다. 디스크·네트워크 인터페이스와 VPC의 기본 리소스에도 태그를 적용합니다. 라우팅 테이블 연결과 탄력적 IP 연결은 별도의 태그를 지원하지 않으므로, 연결 대상 리소스로 식별합니다.
 
-HTTP 80번, HTTPS 443번, 앱 8080번, MySQL 3306번 포트는 열지 않습니다. 앱·MySQL 설치, 도메인·HTTPS, 배포 자동화, S3와 RDS 구성은 이번 범위에 포함하지 않습니다.
+HTTP 80번은 Nginx를 통한 외부 API 접속에 허용합니다. SSH 22번은 기존처럼 운영자 IP만 허용합니다. HTTPS 443번, 앱 8080번, MySQL 3306번 포트는 열지 않습니다. 도메인·HTTPS, 배포 자동화, S3와 RDS 구성은 이번 범위에 포함하지 않습니다.
 
 ## 프로젝트 계정과 키 페어 확인하기
 
@@ -180,13 +180,33 @@ sudo journalctl -u cloud-final --no-pager -n 100
 
 스크립트 성공 시 출력 로그에 `Docker setup completed`가 남습니다. 오류 시 `Docker setup failed at line ...` 앞의 명령 출력을 확인합니다. Docker 서비스 문제는 `sudo journalctl -u docker --no-pager -n 100`으로 확인합니다. 단순 재부팅으로 최초 부팅용 스크립트가 다시 실행되지는 않습니다.
 
+## Nginx 외부 HTTP 접속 허용하기
+
+`main.tf`의 EC2 보안 그룹에서 TCP 80번을 모든 IPv4 주소에 허용합니다. Nginx 컨테이너와 설정 파일의 실행·복사는 Terraform이 아닌 배포용 Compose로 진행합니다. [Nginx 적용 안내](../backend/README.md#nginx로-외부-api-접속하기)를 참고합니다.
+
+내 Mac의 프로젝트 루트에서 다음 명령으로 변경 계획을 확인합니다. `plan`은 AWS 리소스를 변경하지 않습니다.
+
+```bash
+terraform -chdir=infra plan
+```
+
+기존 인프라가 실행 중이라면 이번 변경은 보안 그룹의 HTTP 규칙 추가만 의도합니다. EC2 교체가 나온다면 적용을 멈추고 원인을 확인합니다. 서버를 생성한 이후 최신 AMI가 달라진 경우에도 교체가 제안될 수 있습니다. 전체 `destroy` 후라면 13개 신규 생성이 정상이며 EIP도 새로 할당됩니다. 예상한 변경만 있다면 다음 명령을 실행하고 계획을 다시 확인한 뒤 승인합니다.
+
+```bash
+terraform -chdir=infra apply
+```
+
+저장된 과거 `docker-bootstrap.tfplan`을 사용하지 않습니다. 이 작업 때문에 전체 `destroy`를 실행할 필요는 없습니다.
+
 ## 검증 기록
 
 2026-11-16에 Terraform 1.17.1과 AWS Provider 6.73.0으로 초기화, 형식 검사, 문법 검사와 실제 AWS 조회를 사용하는 `plan`을 확인했습니다. 계획은 추가 13개, 변경 0개, 삭제 0개입니다. Ubuntu 24.04 LTS x86_64 이미지와 기존 키 페어 조회도 성공했습니다.
 
 최초 작성 시 저장된 계획에서 팀 태그, SSH 한 개 IP 허용, `t3.small`과 암호화된 gp3 20GiB 설정을 확인했습니다. 당시 기존 키 페어에는 태그가 없어 콘솔에서 태그를 추가하도록 안내했습니다. 이후 사용자가 직접 인프라 생성·삭제·재생성과 SSH 접속을 확인했습니다.
 
-Docker 자동 설치 추가 후 `bash -n`, `terraform fmt -check`, `terraform validate`, `git diff --check`를 통과했습니다. 실제 AWS 상태를 조회한 `docker-bootstrap.tfplan`은 EC2 한 대 교체로 추가 1개·변경 0개·삭제 1개입니다. EIP·네트워크 인터페이스·EIP 연결·VPC 유지와 설치 스크립트 원문 전달을 계획에서 확인했습니다. 이 계획의 `apply`는 실행하지 않았으며, EC2에서의 Docker 설치·Compose 버전·일반 사용자 실행 검증은 적용 후 남아 있습니다.
+Docker 자동 설치 추가 후 `bash -n`, `terraform fmt -check`, `terraform validate`, `git diff --check`를 통과했습니다. 당시 실제 AWS 상태를 조회한 `docker-bootstrap.tfplan`은 EC2 한 대 교체로 추가 1개·변경 0개·삭제 1개였습니다. EIP·네트워크 인터페이스·EIP 연결·VPC 유지와 설치 스크립트 원문 전달을 계획에서 확인했습니다. 이후 사용자가 전체 삭제 후 새로 생성해 Docker 설치와 EC2 내부 API 정상 응답을 확인했습니다.
+
+Nginx HTTP 규칙 추가 후 Terraform 형식·문법 검증을 통과했습니다. 실제 AWS 조회 계획은 추가 13개·변경 0개·삭제 0개이며, 사용자가 인프라를 전체 삭제한 상태임을 확인했습니다. 이번 HTTP 설정의 `apply`와 외부 API 접속은 아직 수행하지 않았습니다.
 
 ## 공식 문서
 
