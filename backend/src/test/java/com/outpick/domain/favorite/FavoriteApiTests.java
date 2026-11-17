@@ -1,0 +1,177 @@
+package com.outpick.domain.favorite;
+
+import com.jayway.jsonpath.JsonPath;
+import com.outpick.domain.place.entity.Place;
+import com.outpick.domain.place.entity.PlacePublishStatus;
+import com.outpick.domain.place.entity.Region;
+import com.outpick.domain.place.repository.PlaceRepository;
+import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.mysql.MySQLContainer;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest(properties = "spring.jpa.hibernate.ddl-auto=validate")
+@AutoConfigureMockMvc
+@Testcontainers
+class FavoriteApiTests {
+    private static final String FAVORITES = "/api/v1/members/me/favorites";
+
+    @Container
+    @ServiceConnection
+    static MySQLContainer mysql = new MySQLContainer("mysql:8.4.13");
+
+    @Autowired MockMvc mvc;
+    @Autowired JdbcTemplate jdbc;
+    @Autowired PlaceRepository places;
+    @Autowired EntityManager entityManager;
+    @Autowired TransactionTemplate transactions;
+
+    @Test
+    void storesOneFavoritePerMemberAndRemovesOnlyTheCurrentMembersFavorite() throws Exception {
+        var first = login("first-favorite@example.com");
+        var second = login("second-favorite@example.com");
+        long placeId = createPlace();
+
+        mvc.perform(first.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isNoContent());
+        mvc.perform(first.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isNoContent());
+        mvc.perform(get(FAVORITES).session(first.session()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(placeId));
+        mvc.perform(get(FAVORITES).session(second.session()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
+
+        mvc.perform(second.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isNoContent());
+        mvc.perform(first.withCsrf(delete(FAVORITES + "/{placeId}", placeId))).andExpect(status().isNoContent());
+        mvc.perform(first.withCsrf(delete(FAVORITES + "/{placeId}", placeId))).andExpect(status().isNoContent());
+        mvc.perform(get(FAVORITES).session(first.session()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
+        mvc.perform(get(FAVORITES).session(second.session()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(placeId));
+    }
+
+    @Test
+    void requiresSessionAndCsrfAndKeepsPublicPlaceAccess() throws Exception {
+        var member = login("protected-favorite@example.com");
+        long placeId = createPlace();
+
+        mvc.perform(get(FAVORITES)).andExpect(status().isUnauthorized());
+        mvc.perform(put(FAVORITES + "/{placeId}", placeId).session(member.session()))
+                .andExpect(status().isForbidden());
+        mvc.perform(member.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isNoContent());
+        mvc.perform(delete(FAVORITES + "/{placeId}", placeId).session(member.session()))
+                .andExpect(status().isForbidden());
+        mvc.perform(get(FAVORITES).session(member.session()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(placeId));
+        mvc.perform(get("/api/v1/places/{placeId}", placeId)).andExpect(status().isOk());
+    }
+
+    @Test
+    void preservesTheFavoriteWhenAPlaceIsHiddenAndAllowsItsRemoval() throws Exception {
+        var member = login("hidden-favorite@example.com");
+        long placeId = createPlace();
+        mvc.perform(member.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isNoContent());
+
+        var place = places.findById(placeId).orElseThrow();
+        place.changePublishStatus(PlacePublishStatus.HIDDEN);
+        places.save(place);
+        mvc.perform(member.withCsrf(put(FAVORITES + "/{placeId}", placeId)))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
+        mvc.perform(member.withCsrf(put(FAVORITES + "/{placeId}", Long.MAX_VALUE)))
+                .andExpect(status().isNotFound());
+        mvc.perform(get(FAVORITES).session(member.session()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
+        assertThat(favoriteCount(placeId)).isEqualTo(1);
+
+        mvc.perform(member.withCsrf(delete(FAVORITES + "/{placeId}", placeId))).andExpect(status().isNoContent());
+        assertThat(favoriteCount(placeId)).isZero();
+    }
+
+    @Test
+    void concurrentSavesReturnSuccessAndLeaveOneRow() throws Exception {
+        var member = login("concurrent-favorite@example.com");
+        long placeId = createPlace();
+        var ready = new CountDownLatch(2);
+        var start = new CountDownLatch(1);
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(() -> saveTogether(member, placeId, ready, start));
+            var second = executor.submit(() -> saveTogether(member, placeId, ready, start));
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            assertThat(first.get(10, TimeUnit.SECONDS)).isEqualTo(204);
+            assertThat(second.get(10, TimeUnit.SECONDS)).isEqualTo(204);
+        }
+        assertThat(favoriteCount(placeId)).isEqualTo(1);
+    }
+
+    private int saveTogether(MemberSession member, long placeId, CountDownLatch ready, CountDownLatch start)
+            throws Exception {
+        ready.countDown();
+        assertThat(start.await(5, TimeUnit.SECONDS)).isTrue();
+        return mvc.perform(member.withCsrf(put(FAVORITES + "/{placeId}", placeId)))
+                .andReturn().getResponse().getStatus();
+    }
+
+    private long createPlace() {
+        return transactions.execute(transaction -> {
+            var region = Region.builder().name("관심 장소 테스트 지역").build();
+            entityManager.persist(region);
+            var place = Place.builder().region(region).name("관심 장소")
+                    .publishStatus(PlacePublishStatus.PUBLISHED).build();
+            entityManager.persist(place);
+            return place.getId();
+        });
+    }
+
+    private int favoriteCount(long placeId) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM favorite WHERE place_id = ?", Integer.class, placeId);
+    }
+
+    private MemberSession login(String email) throws Exception {
+        var result = mvc.perform(get("/api/v1/auth/csrf")).andExpect(status().isOk()).andReturn();
+        var session = (MockHttpSession) result.getRequest().getSession(false);
+        String csrfResponse = result.getResponse().getContentAsString();
+        var member = new MemberSession(session, JsonPath.read(csrfResponse, "$.headerName"),
+                JsonPath.read(csrfResponse, "$.token"));
+        mvc.perform(member.withCsrf(post("/api/v1/auth/signup")).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"password123","nickname":"관심 장소 회원"}
+                                """.formatted(email)))
+                .andExpect(status().isCreated());
+        mvc.perform(member.withCsrf(post("/api/v1/auth/login")).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"password123"}
+                                """.formatted(email)))
+                .andExpect(status().isOk());
+        return member;
+    }
+
+    private record MemberSession(MockHttpSession session, String headerName, String token) {
+        MockHttpServletRequestBuilder withCsrf(MockHttpServletRequestBuilder request) {
+            return request.session(session).header(headerName, token);
+        }
+    }
+}
