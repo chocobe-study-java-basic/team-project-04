@@ -11,13 +11,15 @@
 
 ## Mac에서 이미지 빌드와 실행 확인하기
 
-Docker Desktop을 실행하고 프로젝트 루트에서 이미지를 만든다.
+Docker Desktop을 실행하고 Node.js 26을 준비한다. `frontend/.env`에 `NEXT_PUBLIC_KAKAO_MAP_JS_KEY`를 설정한다. 개발용 `.env.local`과 별개로 Docker 빌드는 `.env`의 지도 키만 읽는다. 파일이 없거나 키가 비어 있으면 안내 후 빌드를 중단한다. 키 값은 명령에 직접 적지 않는다.
+
+프로젝트 루트에서 이미지를 만든다.
 
 ```bash
 make frontend-docker-build
 ```
 
-이 명령은 AMD64·ARM64를 함께 빌드하고 `--load`로 로컬 Docker에 저장한다. Docker Desktop의 containerd 이미지 저장소가 필요하며, Windows는 Linux 컨테이너 모드를 사용한다. `IMAGE_TAG`를 생략하면 `v0`를 사용한다. `.dockerignore`는 개인 `.env` 파일·키 파일·기존 빌드 결과를 제외한다. 기본 API 주소는 `/`이며 로컬 개발용 `.env.local`은 읽지 않는다. 이미지 빌드는 테스트를 실행하지 않으므로 기존 Frontend 검사와 테스트는 별도로 실행한다.
+이 명령은 `frontend/scripts/docker-build.mjs`로 환경 파일을 실행하지 않고 읽어 지도 키를 전달한다. AMD64·ARM64를 함께 빌드하고 `--load`로 로컬 Docker에 저장한다. Docker Desktop의 containerd 이미지 저장소가 필요하며, Windows는 Linux 컨테이너 모드를 사용한다. `IMAGE_TAG`를 생략하면 `v0`를 사용한다. `.dockerignore`는 개인 `.env` 파일·키 파일·기존 빌드 결과를 제외한다. 배포용 API 주소는 `/`로 고정한다. 이미지 빌드는 테스트를 실행하지 않으므로 기존 Frontend 검사와 테스트는 별도로 실행한다.
 
 루트 `.env`가 없다면 [MySQL 실행 안내](../../README.md#mysql-실행)에 따라 작성한다. Backend 이미지는 기존 `chocobe/outpick-backend:v0`를 사용한다. 각 명령이 성공한 뒤 다음 명령을 실행한다.
 
@@ -52,9 +54,9 @@ docker push chocobe/outpick-frontend:v0
 make frontend-docker-build-push
 ```
 
-이 명령은 `docker buildx build --platform linux/amd64,linux/arm64 -t chocobe/outpick-frontend:v0 --push ./frontend`를 실행한다. `--platform`은 EC2용 AMD64와 Mac용 ARM64를 지정한다. `--push`는 완성한 이미지를 Docker Hub에 업로드한다. 태그는 `IMAGE_TAG=v1`처럼 변경할 수 있다. Backend도 변경했다면 `make backend-docker-build-push`로 함께 빌드·업로드한다. 별도의 로컬 빌드나 `docker push`는 필요하지 않다.
+이 명령도 `frontend/.env`의 지도 키를 읽어 `--build-arg NEXT_PUBLIC_KAKAO_MAP_JS_KEY`로 전달한다. Docker 명령 인자에는 이름만 지정하고 값은 자식 프로세스 환경으로 전달한다. `--platform linux/amd64,linux/arm64`는 EC2용 AMD64와 Mac용 ARM64를 지정한다. `--push`는 완성한 이미지를 Docker Hub에 업로드한다. 태그는 `IMAGE_TAG=v1`처럼 변경할 수 있다. Backend도 변경했다면 `make backend-docker-build-push`로 함께 빌드·업로드한다. 별도의 로컬 빌드나 `docker push`는 필요하지 않다.
 
-기본 빌드에서는 카카오 지도 키를 넣지 않으므로 지도 영역에 키 누락 안내가 표시된다. 예시 API 배포 확인에는 필요하지 않다. 실제 지도 연결은 JavaScript 키를 `NEXT_PUBLIC_KAKAO_MAP_JS_KEY` 빌드 인자로 전달하고 Kakao에 서비스 도메인을 등록한 뒤 다시 빌드한다. 이 키는 브라우저에 공개되며 REST API·Admin 키는 사용하지 않는다.
+전달한 지도 키는 빌드된 브라우저 코드에 포함된다. 키를 바꾸면 재빌드·업로드·컨테이너 교체가 필요하며 EC2의 `.env`를 바꾸는 것만으로는 반영되지 않는다. Kakao에 실제 접속 주소도 JavaScript SDK 도메인으로 등록한다. 이 키는 브라우저에 공개되며 REST API·Admin 키는 사용하지 않는다.
 
 ## Mac에서 배포 파일 업로드하기
 
@@ -101,3 +103,5 @@ curl -i -w '\n' http://localhost/api/v1/examples/1
 브라우저 자동 확인 도구에 연결할 수 없어 버튼 동작·화면 이동·새로고침은 아직 확인하지 않았다. Docker Hub 업로드·AMD64 이미지 실행·EC2 적용도 이번 로컬 검증에 포함하지 않는다. 기존 Backend 코드는 변경하지 않았으며 Java 테스트는 다시 실행하지 않았다.
 
 이후 Makefile의 멀티 플랫폼 로컬 저장 명령을 추가하며 `make backend-docker-build frontend-docker-build IMAGE_TAG=multi-check`를 실제 실행했다. 두 이미지 모두 빌드에 성공했고, `docker image ls --tree --filter 'reference=chocobe/outpick-*:multi-check'`로 각각 `linux/amd64`와 `linux/arm64`가 로컬에 저장된 것을 확인했다. 검증용 태그는 로컬에 보관하며 Docker Hub Push는 실행하지 않았다.
+
+카카오 키 전달 추가 후에는 `make frontend-docker-build IMAGE_TAG=kakao-check`로 실제 빌드했다. 두 플랫폼의 정적 JavaScript에 `.env`의 키가 포함됐고, API 주소 `/` 유지·개발용 API 주소 및 환경 파일 미포함·빌드 로그의 키 값 미출력을 확인했다. 린트와 임시 모의 Docker 검증으로 두 Make 명령의 키 전달, 다른 파일·셸 값 제외, 파일·키 누락과 Docker 실패 처리를 확인했다. 실제 Push와 EC2의 지도 표시는 아직 검증하지 않았다.

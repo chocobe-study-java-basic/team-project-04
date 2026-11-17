@@ -107,8 +107,8 @@ frontend-preview:
 
 # AMD64·ARM64 이미지를 빌드해 로컬에 저장합니다. containerd 이미지 저장소가 필요합니다.
 frontend-docker-build:
-	docker buildx build --platform linux/amd64,linux/arm64 -t "chocobe/outpick-frontend:$(IMAGE_TAG)" --load ./frontend
+	node frontend/scripts/docker-build.mjs --load "$(IMAGE_TAG)"
 
 # Mac과 EC2용 이미지를 함께 빌드해 업로드합니다. Docker Hub 로그인이 필요합니다.
 frontend-docker-build-push:
-	docker buildx build --platform linux/amd64,linux/arm64 -t "chocobe/outpick-frontend:$(IMAGE_TAG)" --push ./frontend
+	node frontend/scripts/docker-build.mjs --push "$(IMAGE_TAG)"

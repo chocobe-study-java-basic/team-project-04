@@ -117,6 +117,8 @@ Backend와 MySQL을 함께 컨테이너로 실행할 때는 별도의 `compose.d
 
 Docker Desktop을 실행하고 프로젝트 루트에서 사용합니다.
 
+Frontend 이미지 빌드에는 Node.js 26도 필요합니다. `frontend/.env`의 `NEXT_PUBLIC_KAKAO_MAP_JS_KEY`에 카카오 JavaScript 키를 설정합니다. 두 Frontend 명령 모두 이 파일의 지도 키만 읽어 Docker 빌드 인자로 전달하며, 파일이 없거나 키가 비어 있으면 빌드를 중단합니다. 환경 파일 자체는 Git과 이미지에 포함하지 않습니다. 배포용 API 주소는 `/`로 고정하고 `.env.local`은 읽지 않습니다. 키는 빌드된 JavaScript에 공개되므로 REST API·Admin 키를 넣지 않습니다.
+
 ```bash
 make backend-docker-build
 make frontend-docker-build
