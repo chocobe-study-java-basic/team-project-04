@@ -1,6 +1,7 @@
 package com.outpick.domain.place;
 
 import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -18,6 +19,7 @@ class PlaceStatusMigrationTests {
     static MySQLContainer mysql = new MySQLContainer("mysql:8.4.13");
 
     @Test
+    @DisplayName("V1을 갱신해도 검수 전 장소를 공개하지 않는다")
     void upgradesV1WithoutPublishingUnreviewedPlaces() throws Exception {
         Flyway.configure().dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
                 .target("1").load().migrate();

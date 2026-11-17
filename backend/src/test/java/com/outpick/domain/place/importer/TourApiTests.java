@@ -1,5 +1,6 @@
 package com.outpick.domain.place.importer;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -27,7 +28,9 @@ class TourApiTests {
                 "header", Map.of("resultCode", "0000"), "body", Map.of("items", Map.of("item", array ? List.of(item) : item)))));
     }
 
-    @Test void acceptsObjectAndArrayAndChecksContentId() {
+    @Test
+    @DisplayName("객체와 배열 응답을 처리하고 콘텐츠 ID를 검증한다")
+    void acceptsObjectAndArrayAndChecksContentId() {
         for (boolean array : List.of(true, false)) {
             var client = new TourApiClient(id -> response(id, array));
             assertThat(client.getPlace("1").title()).isEqualTo("테스트 시설");
@@ -37,6 +40,7 @@ class TourApiTests {
     }
 
     @ParameterizedTest
+    @DisplayName("잘못된 응답과 제공기관 오류를 거절하고 원문을 노출하지 않는다")
     @ValueSource(strings = {"<xml>serviceKey=secret</xml>", "not json", "{\"response\":{\"header\":{\"resultCode\":\"30\",\"resultMsg\":\"secret\"}}}",
             "{\"response\":{\"header\":{\"resultCode\":\"0000\"},\"body\":{\"items\":\"\"}}}"})
     void rejectsInvalidAndProviderErrorWithoutLeakingBody(String raw) {
@@ -44,7 +48,9 @@ class TourApiTests {
                 .isInstanceOf(TourApiException.class).hasNoCause().hasMessageNotContaining("secret");
     }
 
-    @Test void normalizesCoordinatesHtmlAndLeavesVerificationSeparate() {
+    @Test
+    @DisplayName("좌표와 HTML을 정규화하고 수집을 검수와 구분한다")
+    void normalizesCoordinatesHtmlAndLeavesVerificationSeparate() {
         var normalizer = new TourApiNormalizer();
         var result = normalizer.normalize(target("1"), place("1", "126.680685089403", "<a href='https://example.com/a?a=1&amp;b=2'>홈</a>"));
         assertThat(result.latitude()).isEqualByComparingTo("37.3240989");
@@ -56,7 +62,9 @@ class TourApiTests {
         assertThat(result.originUpdatedAt().getYear()).isEqualTo(2026);
     }
 
-    @Test void acceptsRealHomepageFormatsAndRejectsUnsafeSchemes() {
+    @Test
+    @DisplayName("홈페이지 주소를 정규화하고 위험한 URL을 제외한다")
+    void acceptsRealHomepageFormatsAndRejectsUnsafeSchemes() {
         var normalizer = new TourApiNormalizer();
         assertThat(normalizer.homepage("공식 홈페이지 https://busan.skylineluge.kr/")).isEqualTo("https://busan.skylineluge.kr/");
         assertThat(normalizer.homepage("www.railtrip.co.kr")).isEqualTo("https://www.railtrip.co.kr");
@@ -65,13 +73,17 @@ class TourApiTests {
         assertThat(normalizer.text("<script>alert(1)</script><p>안내</p>")).isEqualTo("안내");
     }
 
-    @ParameterizedTest @ValueSource(strings = {"181", "NaN", "", "1e2", "126.1oops"})
+    @ParameterizedTest
+    @DisplayName("유효하지 않은 경도를 거절한다")
+    @ValueSource(strings = {"181", "NaN", "", "1e2", "126.1oops"})
     void rejectsBadCoordinates(String longitude) {
         assertThatThrownBy(() -> new TourApiNormalizer().normalize(target("1"), place("1", longitude, "")))
                 .isInstanceOf(TourApiException.class);
     }
 
-    @Test void rejectsUnexpectedFacilityAndDoesNotTruncateLongUrl() {
+    @Test
+    @DisplayName("다른 시설 응답과 길이 제한을 넘는 URL을 거절한다")
+    void rejectsUnexpectedFacilityAndDoesNotTruncateLongUrl() {
         var normalizer = new TourApiNormalizer();
         assertThatThrownBy(() -> normalizer.normalize(target("2"), place("1", "126.1", "")))
                 .isInstanceOf(TourApiException.class);
