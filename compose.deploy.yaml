@@ -35,7 +35,7 @@ services:
       - "127.0.0.1:18080:8080"
 
   nginx:
-    image: nginx:stable-alpine
+    image: chocobe/outpick-frontend:v0
     restart: unless-stopped
     depends_on:
       - backend

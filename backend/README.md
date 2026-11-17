@@ -24,6 +24,8 @@ docker build -t chocobe/outpick-backend:v0 ./backend
 
 ### Backend와 MySQL 함께 실행하기
 
+배포용 Compose의 Nginx는 Frontend 파일을 포함한 `chocobe/outpick-frontend:v0` 이미지를 사용합니다. 최초 실행 전에 [Frontend 배포 안내](../frontend/docs/deployment.md)에 따라 이 이미지도 빌드하거나 Docker Hub에서 내려받습니다.
+
 루트 `.env`가 없다면 [MySQL 실행 안내](../README.md#mysql-실행)에 따라 먼저 작성합니다. Compose가 `.env`의 값을 자동으로 읽으므로 터미널에서 `source`나 `set -a`를 실행할 필요가 없습니다. 셸에 같은 이름의 환경 변수가 등록돼 있으면 그 값이 `.env`보다 우선하므로, 앞서 값을 내보냈다면 새 터미널에서 진행합니다.
 
 먼저 설정을 검사합니다. `--quiet`는 비밀번호가 포함된 설정을 화면에 출력하지 않습니다.
@@ -52,7 +54,7 @@ Compose는 다음 순서로 실행합니다.
 | 설정 | 역할 |
 |---|---|
 | `name: outpick-deploy` | 개발용과 컨테이너·데이터 볼륨을 분리하는 Compose 프로젝트 이름 |
-| `networks.default.name: outpick-network` | 두 서비스를 자동으로 연결할 실제 네트워크 이름 |
+| `networks.default.name: outpick-network` | 세 서비스를 자동으로 연결할 실제 네트워크 이름 |
 | `MYSQL_HOST=mysql`, `MYSQL_PORT=3306` | Backend가 Docker 네트워크 안에서 접근할 MySQL 주소 |
 | `127.0.0.1:18080:8080` | 내 PC의 18080 포트를 Backend 컨테이너의 8080 포트에 연결 |
 | `80:80` | 호스트의 HTTP 80번 포트를 Nginx에 연결 |
@@ -114,7 +116,7 @@ Mac의 Apple Silicon은 ARM64이고 현재 EC2의 t3.small은 AMD64입니다. �
 브라우저 → EC2의 80번 포트 → Nginx → backend:8080 → Spring Boot
 ```
 
-`nginx/default.conf`는 `/api/` 경로만 Backend에 전달합니다. `proxy_pass`에 경로를 덧붙이지 않아 `/api/v1/...`를 그대로 유지합니다. 그 외 경로는 404를 반환합니다. Frontend 화면·Swagger·Actuator의 외부 전달은 아직 구성하지 않습니다. EC2 내부의 기존 `localhost:18080/actuator/health`는 계속 사용할 수 있습니다.
+`nginx/default.conf`는 `/api/` 경로만 Backend에 전달합니다. `proxy_pass`에 경로를 덧붙이지 않아 `/api/v1/...`를 그대로 유지합니다. 화면 요청에는 이미지의 Frontend 파일을 제공하고, 없는 파일은 404를 반환합니다. Swagger·Actuator는 외부로 전달하지 않습니다. EC2 내부의 기존 `localhost:18080/actuator/health`는 계속 사용할 수 있습니다.
 
 `backend`는 같은 Docker 네트워크의 서비스 이름입니다. `upstream`은 요청을 전달할 서버 설정이고, `resolver 127.0.0.11`은 Docker 내부 DNS를 사용한다는 뜻입니다. `resolve`와 공유 영역인 `zone`을 함께 사용해 Backend 교체 후 바뀐 IP를 다시 조회합니다. Backend가 교체되는 동안이나 시작 중에는 일시적으로 502가 나올 수 있습니다.
 
@@ -180,7 +182,7 @@ EC2 내부에서는 정상인데 내 Mac에서 접속이 안 되면 EIP와 보�
 
 참고: [Nginx proxy_pass](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_pass), [Nginx upstream 주소 갱신](https://nginx.org/en/docs/http/ngx_http_upstream_module.html#resolve).
 
-로컬 Nginx 1.30.6에서 설정 문법 검사, GET 정상 JSON과 요청 ID 전달, POST 본문 전달, Backend의 404 ProblemDetail 전달을 확인했습니다. `/`, `/actuator/health`, `/swagger-ui.html`은 Nginx에서 404를 반환했습니다. Backend 컨테이너를 다른 내부 IP로 교체한 뒤에도 Nginx를 재시작하지 않고 HTTP 200 응답이 복구되는 것을 확인했습니다. 검증용 컨테이너는 종료하며 DB 볼륨은 보존합니다. 이번 변경은 설정 파일만 수정했으므로 기존 Java 테스트는 다시 실행하지 않았습니다. EC2에서 Nginx 실행과 외부 브라우저 접속 확인은 남아 있습니다.
+Frontend 추가 전 로컬 Nginx 1.30.6에서 설정 검사, GET·POST 전달과 Backend의 404 응답을 확인했습니다. 당시 `/`, `/actuator/health`, `/swagger-ui.html`은 404를 반환했습니다. Backend를 다른 내부 IP로 교체한 뒤에도 Nginx 재시작 없이 HTTP 200 응답이 복구됐습니다. 이후 사용자가 EC2에서 외부 브라우저의 예시 API 응답을 확인했고, 2026-11-17 인프라 재생성부터 외부 요청까지 다시 확인했습니다. Frontend 추가 후의 검증 범위는 [Frontend 배포 안내](../frontend/docs/deployment.md#이번-로컬-검증-결과)에 기록합니다.
 
 ## 장소 저장 모델
 

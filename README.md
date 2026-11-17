@@ -116,3 +116,5 @@ Backend와 MySQL을 함께 컨테이너로 실행할 때는 별도의 `compose.d
 ## Frontend 개발 환경
 
 Next.js·TypeScript 기반 Frontend의 Node 버전, 실행·검사·테스트·정적 빌드 방법은 [Frontend README](frontend/README.md)를 참고합니다. 공통 기반과 로컬 브라우저 검증을 마쳤으며, Zustand는 공유할 UI 상태가 확정될 때까지 보류합니다.
+
+Frontend Docker 이미지 빌드와 기존 EC2에서의 화면·API 확인은 [Frontend 배포 안내](frontend/docs/deployment.md)를 참고합니다.

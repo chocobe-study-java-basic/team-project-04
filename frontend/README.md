@@ -90,7 +90,7 @@ make frontend-dev
 |---|---|---|
 | `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8080` | Backend API 서버의 기본 주소. 도메인 API 함수가 `/api` 등의 요청 경로를 추가 |
 
-공통 Axios 인스턴스가 이 값을 읽는다. API 모듈을 사용하는 실행·빌드 환경에는 이 변수가 필요하며 누락되거나 유효한 HTTP(S) URL이 아니면 초기화 시 실패한다.
+공통 Axios 인스턴스가 이 값을 읽는다. 로컬 개발에서는 `http://localhost:8080`, 배포용 Docker 이미지에서는 `/`를 사용한다. `/`는 브라우저가 현재 화면의 프로토콜·호스트·포트를 사용해 API를 요청한다는 뜻이다. 값이 없거나 `/` 또는 유효한 HTTP(S) 주소가 아니면 초기화 시 실패한다.
 
 `NEXT_PUBLIC_` 변수는 브라우저에 공개되므로 비밀번호·토큰을 넣지 않는다. 정적 배포에서는 빌드 시 값이 고정되므로 배포 환경의 API 주소를 설정한 뒤 빌드한다. 값 변경 후 개발 서버는 다시 시작하고, 배포 파일은 다시 빌드한다. 터미널에서 이미 설정한 동일한 이름의 환경변수는 `.env.local`보다 우선한다.
 
@@ -135,7 +135,7 @@ make frontend-preview
 
 정적 호스트는 디렉터리의 `index.html`을 제공해야 한다. CDN에서 같은 동작을 지원하는지 추후 인프라 작업에서 확인한다. 모든 경로를 루트 HTML로 돌리는 방식 대신 경로에 해당하는 HTML을 제공한다. 클라이언트 이동에 사용하는 `.txt` 파일과 `_next/` 자원도 필요하므로 `out/` 전체를 배포 대상으로 삼는다.
 
-API 주소는 빌드 시 브라우저 코드에 포함된다. 배포 대상 API 주소를 설정한 뒤 빌드하며, 이미 빌드한 파일의 API 주소를 바꾸려면 다시 빌드한다. 비밀정보는 `NEXT_PUBLIC_` 환경변수에 넣지 않는다.
+API 주소는 빌드 시 브라우저 코드에 포함된다. 배포 대상 API 주소를 설정한 뒤 빌드하며, 이미 빌드한 파일의 API 주소를 바꾸려면 다시 빌드한다. `/`로 빌드하면 EC2 IP나 접속 도메인이 바뀌어도 같은 이미지를 사용할 수 있다. 비밀정보는 `NEXT_PUBLIC_` 환경변수에 넣지 않는다.
 
 이번 로컬 검증에서 프로덕션 빌드, 네 페이지의 HTML 직접·반복 요청, JS·CSS 자원 11개의 HTTP 200, 빌드 코드의 로컬 API 주소 포함을 확인했다. 실제 Backend의 ID 1 성공·ID 2 업무 오류와 CORS 헤더도 확인했다. Next.js 서버는 사용하지 않았고 검증용 정적 서버는 종료했다.
 
@@ -153,6 +153,10 @@ AWS·CDN·Terraform 구축과 실제 배포는 이번 검증 범위에 포함하
 - 개발 서버와 정적 파일 서버에서 기본 HTML·CSS·JavaScript의 HTTP 200 응답과 Tailwind 클래스 생성을 확인했다.
 - 초기에는 브라우저 도구를 사용할 수 없었으며, 이후 사용자가 개발 서버와 정적 빌드 화면의 동작을 직접 확인했다. 반응형 세부 디자인 검수는 별도다.
 - `npm audit`에서 린트 도구의 간접 의존성인 minimatch 관련 중간 등급 경고 7건이 확인됐다. 호환 범위 내 `npm audit fix`로는 해결되지 않았으며, 강제 버전 변경은 적용하지 않았다.
+
+## Docker 배포
+
+Frontend 파일을 포함한 Nginx 이미지를 만들어 기존 배포용 Compose에서 실행한다. 이미지 빌드·Docker Hub 업로드·EC2 파일 전달·브라우저 확인은 [Frontend 배포 안내](docs/deployment.md)를 따른다. 로컬 개발은 기존 Frontend 개발 서버와 IntelliJ Backend를 각각 실행하는 방법을 유지한다.
 
 ## 테스트
 
@@ -217,7 +221,7 @@ src/
 - `previewExample({ name, participantCount })`: `POST /api/v1/examples/preview`로 미리보기를 요청한다. 저장하지 않으며 이름·인원수의 Backend Validation을 적용한다.
 - 두 함수는 `{ name, participantCount }`를 반환하고 `data` 래퍼를 추가하지 않는다. TypeScript DTO 타입은 Backend 계약을 표현하며 성공 JSON의 런타임 검증 기능은 아니다.
 
-Backend의 공통 접두사에 맞춰 도메인 API 함수는 `/api/v1/...` 경로를 사용한다. `NEXT_PUBLIC_API_BASE_URL`에는 `http://localhost:8080`처럼 서버 기본 주소만 설정하고 `/api/v1`을 중복으로 넣지 않는다.
+Backend의 공통 접두사에 맞춰 도메인 API 함수는 `/api/v1/...` 경로를 사용한다. `NEXT_PUBLIC_API_BASE_URL`에는 로컬 개발용 `http://localhost:8080` 또는 배포용 `/`를 설정하고 `/api/v1`을 중복으로 넣지 않는다.
 
 ### 공통 오류 사용
 
