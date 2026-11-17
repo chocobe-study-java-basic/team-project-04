@@ -37,4 +37,25 @@ public class MemberService {
 
         return new SignupResponse(member.getId(), member.getEmail(), member.getNickname());
     }
+
+    @Transactional(readOnly = true)
+    public Member authenticate(String rawEmail, String password) {
+        String email = rawEmail.trim().toLowerCase(Locale.ROOT);
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(MemberErrorCode.INVALID_CREDENTIALS.getErrorCode()));
+        if (!"ACTIVE".equals(member.getStatus()) || !passwordEncoder.matches(password, member.getPasswordHash())) {
+            throw new BusinessException(MemberErrorCode.INVALID_CREDENTIALS.getErrorCode());
+        }
+        return member;
+    }
+
+    @Transactional(readOnly = true)
+    public Member findActiveMember(Long id) {
+        Member member = memberRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND.getErrorCode()));
+        if (!"ACTIVE".equals(member.getStatus())) {
+            throw new BusinessException(MemberErrorCode.MEMBER_NOT_FOUND.getErrorCode());
+        }
+        return member;
+    }
 }
