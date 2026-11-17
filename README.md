@@ -1,5 +1,9 @@
 # OUTPICK 로컬 개발 환경
 
+## 장소 화면과 API 통합 확인
+
+통합 브랜치의 장소 목록·상세·지도는 실제 Backend API를 호출한다. Backend를 `local,demo` 프로필로 실행하면 로컬 DB에 `[데모]` 가상 장소 6개를 생성해 연결을 확인할 수 있다. 공공 API 수집 데이터는 아니다. 실행 방법과 브랜치 구성은 [장소 API 연결 문서](backend/docs/place-integration.md)를 참고한다.
+
 ## CI 자동 검사
 
 GitHub Actions 설정은 `.github/workflows/frontend-ci.yml`, `.github/workflows/backend-ci.yml`에서 관리합니다.

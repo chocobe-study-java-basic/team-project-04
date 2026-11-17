@@ -16,12 +16,17 @@ function allowedValue(value: string | null, allowed: string[], fallback = '') {
   return value !== null && allowed.includes(value) ? value : fallback;
 }
 
+function optionName(value: string | null, fallback = '') {
+  const normalized = value?.trim();
+  return normalized && normalized.length <= 50 ? normalized : fallback;
+}
+
 /** 화면에서 지원하지 않는 URL 값은 기본 조건으로 해석합니다. */
 export function readPlaceSearchParams(params: Pick<URLSearchParams, 'get'>): PlaceSearchFilters {
   return {
     query: (params.get('query') ?? '').trim(),
-    category: allowedValue(params.get('category'), categories, '전체'),
-    region: allowedValue(params.get('region'), ['강원', '경기']),
+    category: optionName(params.get('category'), '전체'),
+    region: optionName(params.get('region')),
     season: allowedValue(params.get('season'), seasons),
     environment: allowedValue(params.get('environment'), ['실내', '실외']),
     sort: allowedValue(params.get('sort'), ['name', 'name-desc'], 'name'),

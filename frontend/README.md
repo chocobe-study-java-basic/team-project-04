@@ -1,5 +1,9 @@
 # OUTPICK Frontend
 
+## 현재 장소 API 연결 상태
+
+목록·지도·상세는 Backend의 실제 장소 API를 사용한다. 실행 중인 화면에서는 `samplePlaces`를 읽지 않는다. Backend 실행 및 demo 데이터는 [연결 문서](../backend/docs/place-integration.md)를 참고한다. 아래 샘플 장소 설명은 초기 화면 개발 이력이며 현재 조회 방식은 이 절을 기준으로 한다.
+
 Next.js + TypeScript + Tailwind CSS 기반으로 정적 파일을 빌드한다. HTTP 통신은 Axios, 서버 상태 관리는 TanStack Query를 사용한다. 공유 클라이언트 상태 관리는 Zustand를 사용할 예정이다.
 
 현재는 개발 환경·레이아웃 예시와 TanStack Query 기반 조회 화면을 구성했다. Zustand 설치·Store 구현은 공유할 UI 상태가 확정될 때까지 보류한다.
