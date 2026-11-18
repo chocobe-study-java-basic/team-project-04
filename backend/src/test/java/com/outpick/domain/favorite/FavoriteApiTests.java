@@ -30,7 +30,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -58,13 +57,13 @@ class FavoriteApiTests {
         var second = login("second-favorite@example.com");
         long placeId = createPlace();
 
-        mvc.perform(first.withCsrf(put(FAVORITES + "/{placeId}", placeId)))
-                .andExpect(status().isOk())
+        mvc.perform(first.withCsrf(createFavorite(placeId)))
+                .andExpect(status().isCreated())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.placeId").value(placeId))
                 .andExpect(jsonPath("$.message").value("관심 장소에 저장했습니다."));
         var saved = jdbc.queryForMap("SELECT favorite_id, created_at FROM favorite WHERE place_id = ?", placeId);
-        mvc.perform(first.withCsrf(put(FAVORITES + "/{placeId}", placeId)))
+        mvc.perform(first.withCsrf(createFavorite(placeId)))
                 .andExpect(status().isConflict())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.status").value(409))
@@ -78,7 +77,7 @@ class FavoriteApiTests {
         mvc.perform(get(FAVORITES).session(second.session()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
 
-        mvc.perform(second.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isOk());
+        mvc.perform(second.withCsrf(createFavorite(placeId))).andExpect(status().isCreated());
         mvc.perform(first.withCsrf(delete(FAVORITES + "/{placeId}", placeId)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
@@ -89,7 +88,7 @@ class FavoriteApiTests {
                 .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
         mvc.perform(get(FAVORITES).session(second.session()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(placeId));
-        mvc.perform(first.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isOk());
+        mvc.perform(first.withCsrf(createFavorite(placeId))).andExpect(status().isCreated());
     }
 
     @Test
@@ -99,9 +98,9 @@ class FavoriteApiTests {
         long placeId = createPlace();
 
         mvc.perform(get(FAVORITES)).andExpect(status().isUnauthorized());
-        mvc.perform(put(FAVORITES + "/{placeId}", placeId).session(member.session()))
+        mvc.perform(createFavorite(placeId).session(member.session()))
                 .andExpect(status().isForbidden());
-        mvc.perform(member.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isOk());
+        mvc.perform(member.withCsrf(createFavorite(placeId))).andExpect(status().isCreated());
         mvc.perform(delete(FAVORITES + "/{placeId}", placeId).session(member.session()))
                 .andExpect(status().isForbidden());
         mvc.perform(get(FAVORITES).session(member.session()))
@@ -114,14 +113,14 @@ class FavoriteApiTests {
     void preservesTheFavoriteWhenAPlaceIsHiddenAndAllowsItsRemoval() throws Exception {
         var member = login("hidden-favorite@example.com");
         long placeId = createPlace();
-        mvc.perform(member.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isOk());
+        mvc.perform(member.withCsrf(createFavorite(placeId))).andExpect(status().isCreated());
 
         var place = places.findById(placeId).orElseThrow();
         place.changePublishStatus(PlacePublishStatus.HIDDEN);
         places.save(place);
-        mvc.perform(member.withCsrf(put(FAVORITES + "/{placeId}", placeId)))
+        mvc.perform(member.withCsrf(createFavorite(placeId)))
                 .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
-        mvc.perform(member.withCsrf(put(FAVORITES + "/{placeId}", Long.MAX_VALUE)))
+        mvc.perform(member.withCsrf(createFavorite(Long.MAX_VALUE)))
                 .andExpect(status().isNotFound());
         mvc.perform(get(FAVORITES).session(member.session()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
@@ -145,7 +144,7 @@ class FavoriteApiTests {
             assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
             start.countDown();
             assertThat(java.util.List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS)))
-                    .containsExactlyInAnyOrder(200, 409);
+                    .containsExactlyInAnyOrder(201, 409);
         }
         assertThat(favoriteCount(placeId)).isEqualTo(1);
     }
@@ -154,8 +153,25 @@ class FavoriteApiTests {
             throws Exception {
         ready.countDown();
         assertThat(start.await(5, TimeUnit.SECONDS)).isTrue();
-        return mvc.perform(member.withCsrf(put(FAVORITES + "/{placeId}", placeId)))
+        return mvc.perform(member.withCsrf(createFavorite(placeId)))
                 .andReturn().getResponse().getStatus();
+    }
+
+    private MockHttpServletRequestBuilder createFavorite(long placeId) {
+        return post(FAVORITES).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"placeId\":" + placeId + "}");
+    }
+
+    @Test
+    @DisplayName("관심 장소 등록은 장소 ID의 필수값과 양수 조건을 검증한다")
+    void validatesPlaceIdInRequestBody() throws Exception {
+        var member = login("invalid-favorite@example.com");
+        for (String body : java.util.List.of("{}", "{\"placeId\":null}", "{\"placeId\":0}", "{\"placeId\":-1}")) {
+            mvc.perform(member.withCsrf(post(FAVORITES)).contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                    .andExpect(jsonPath("$.fieldErrors[0].field").value("placeId"));
+        }
     }
 
     private long createPlace() {
