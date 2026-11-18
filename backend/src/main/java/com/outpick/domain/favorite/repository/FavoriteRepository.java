@@ -25,9 +25,8 @@ public interface FavoriteRepository extends Repository<Favorite, Long> {
     @Modifying
     @Query(value = """
             INSERT INTO favorite (user_id, place_id) VALUES (:memberId, :placeId)
-            ON DUPLICATE KEY UPDATE favorite_id = favorite_id
             """, nativeQuery = true)
-    void saveIfAbsent(@Param("memberId") Long memberId, @Param("placeId") long placeId);
+    void insert(@Param("memberId") Long memberId, @Param("placeId") long placeId);
 
     @Modifying
     @Query("delete from Favorite favorite where favorite.memberId = :memberId and favorite.place.id = :placeId")

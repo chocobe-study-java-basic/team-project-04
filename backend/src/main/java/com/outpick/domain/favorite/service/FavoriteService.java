@@ -1,6 +1,7 @@
 package com.outpick.domain.favorite.service;
 
 import com.outpick.domain.favorite.repository.FavoriteRepository;
+import com.outpick.domain.favorite.exception.FavoriteErrorCode;
 import com.outpick.domain.member.service.MemberService;
 import com.outpick.domain.place.dto.PlaceSummaryResponse;
 import com.outpick.domain.place.entity.PlacePublishStatus;
@@ -8,6 +9,8 @@ import com.outpick.domain.place.exception.PlaceErrorCode;
 import com.outpick.domain.place.repository.PlaceRepository;
 import com.outpick.global.error.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,7 +35,18 @@ public class FavoriteService {
         if (!placeRepository.existsByIdAndPublishStatus(placeId, PlacePublishStatus.PUBLISHED)) {
             throw new BusinessException(PlaceErrorCode.PLACE_NOT_FOUND.getErrorCode());
         }
-        favoriteRepository.saveIfAbsent(memberId, placeId);
+        try {
+            favoriteRepository.insert(memberId, placeId);
+        } catch (DataIntegrityViolationException exception) {
+            if (exception.getCause() instanceof ConstraintViolationException violation
+                    && violation.getErrorCode() == 1062
+                    && violation.getConstraintName() != null
+                    && (violation.getConstraintName().equals("uk_favorite_user_place")
+                    || violation.getConstraintName().endsWith(".uk_favorite_user_place"))) {
+                throw new BusinessException(FavoriteErrorCode.FAVORITE_ALREADY_EXISTS.getErrorCode());
+            }
+            throw exception;
+        }
     }
 
     @Transactional

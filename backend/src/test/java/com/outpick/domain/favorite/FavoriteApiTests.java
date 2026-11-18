@@ -32,6 +32,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = "spring.jpa.hibernate.ddl-auto=validate")
@@ -58,7 +59,15 @@ class FavoriteApiTests {
         long placeId = createPlace();
 
         mvc.perform(first.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isNoContent());
-        mvc.perform(first.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isNoContent());
+        var saved = jdbc.queryForMap("SELECT favorite_id, created_at FROM favorite WHERE place_id = ?", placeId);
+        mvc.perform(first.withCsrf(put(FAVORITES + "/{placeId}", placeId)))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.code").value("FAVORITE_ALREADY_EXISTS"))
+                .andExpect(jsonPath("$.detail").value("이미 관심 장소에 저장된 장소입니다."));
+        assertThat(jdbc.queryForMap("SELECT favorite_id, created_at FROM favorite WHERE place_id = ?", placeId))
+                .isEqualTo(saved);
         mvc.perform(get(FAVORITES).session(first.session()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(placeId));
@@ -72,6 +81,7 @@ class FavoriteApiTests {
                 .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
         mvc.perform(get(FAVORITES).session(second.session()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(placeId));
+        mvc.perform(first.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isNoContent());
     }
 
     @Test
@@ -114,8 +124,8 @@ class FavoriteApiTests {
     }
 
     @Test
-    @DisplayName("동시에 같은 관심 장소를 저장해도 한 건을 유지한다")
-    void concurrentSavesReturnSuccessAndLeaveOneRow() throws Exception {
+    @DisplayName("동시에 같은 관심 장소를 저장하면 한 건은 성공하고 한 건은 중복 오류를 반환한다")
+    void concurrentSavesReturnOneSuccessAndOneConflict() throws Exception {
         var member = login("concurrent-favorite@example.com");
         long placeId = createPlace();
         var ready = new CountDownLatch(2);
@@ -126,8 +136,8 @@ class FavoriteApiTests {
             var second = executor.submit(() -> saveTogether(member, placeId, ready, start));
             assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
             start.countDown();
-            assertThat(first.get(10, TimeUnit.SECONDS)).isEqualTo(204);
-            assertThat(second.get(10, TimeUnit.SECONDS)).isEqualTo(204);
+            assertThat(java.util.List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS)))
+                    .containsExactlyInAnyOrder(204, 409);
         }
         assertThat(favoriteCount(placeId)).isEqualTo(1);
     }
