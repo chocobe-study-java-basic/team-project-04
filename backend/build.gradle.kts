@@ -21,6 +21,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
+	implementation("org.springframework.boot:spring-boot-starter-mail")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.flywaydb:flyway-mysql")
@@ -46,4 +47,17 @@ dependencies {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+}
+
+springBoot {
+	mainClass = "com.outpick.BackendApplication"
+}
+
+tasks.register<JavaExec>("importTourPlaces") {
+	group = "application"
+	description = "TourAPI 초기 후보 5곳을 로컬 DB에 검수 전 상태로 수집합니다."
+	classpath = sourceSets.main.get().runtimeClasspath
+	mainClass = "com.outpick.domain.place.importer.TourApiImportCommand"
+	systemProperty("spring.devtools.restart.enabled", "false")
+	javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
 }
