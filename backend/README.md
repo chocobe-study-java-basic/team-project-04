@@ -20,7 +20,7 @@ ERD v3 기반 장소·지역·종목·시즌·출처·공지 엔티티와 Flyway
 
 ## 도메인 API 공통 경로
 
-공개 장소 검색은 `GET /api/v1/places`로 제공한다. 필터·지도 범위·정렬·페이지 응답과 검증 방법은 [장소 검색 API 문서](docs/place-search-api.md)를 참고한다. 프론트 샘플 화면은 아직 이 API와 연결하지 않았다.
+공개 장소 검색은 `GET /api/v1/places`로 제공한다. 필터·지도 범위·정렬·페이지 응답과 검증 방법은 [장소 검색 API 문서](docs/place-search-api.md)를 참고한다. 통합 브랜치의 프론트 연결·필터 선택지·demo 프로필 실행은 [연결 문서](docs/place-integration.md)를 참고한다.
 
 공개 장소 상세는 `GET /api/v1/places/{placeId}`로 제공한다. 활동·시즌·확인된 출처·유효한 공개 공지를 반환하며 비공개 장소는 404로 처리한다. 응답과 공지 시각 정책은 [장소 상세 API 문서](docs/place-detail-api.md)를 참고한다.
 

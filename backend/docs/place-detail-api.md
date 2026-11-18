@@ -72,4 +72,4 @@ MySQL Testcontainers의 상세 API 통합 테스트는 공개 제한, 활동별 
 ./gradlew build
 ```
 
-Swagger에도 `/api/v1/places/{placeId}`를 노출한다. 프론트 샘플 화면을 실제 API로 전환하는 작업과 공공 API 수집은 이번 범위에 포함하지 않는다.
+Swagger에도 `/api/v1/places/{placeId}`를 노출한다. 후속 프론트 연결은 [연결 문서](place-integration.md)를 참고한다. 공공 API 수집은 아직 구현하지 않았다.
