@@ -42,10 +42,16 @@ scp -i "$SSH_KEY" infra/systemd/outpick-certbot-renew.service infra/systemd/outp
 
 ```bash
 cd ~/outpick
+
+# 설정 내용을 출력하지 않고 Compose 설정 오류 검사하기
 docker compose -f compose.deploy.yaml config --quiet
+# Docker Hub에서 배포에 사용할 이미지 내려받기
 docker compose -f compose.deploy.yaml pull
+# HTTP 구성으로 컨테이너를 백그라운드에서 실행하고 준비 완료까지 기다리기
 docker compose -f compose.deploy.yaml up -d --wait
+# 실행 중인 Nginx의 설정 검사만 하기. 설정은 적용하지 않음
 docker compose -f compose.deploy.yaml exec -T nginx nginx -t
+# 실행 중인 Nginx에 설정 다시 적용하기
 docker compose -f compose.deploy.yaml exec -T nginx nginx -s reload
 ```
 
@@ -56,10 +62,20 @@ docker compose -f compose.deploy.yaml exec -T nginx nginx -s reload
 먼저 테스트 발급을 실행합니다. `YOUR_EMAIL`은 본인의 이메일로 바꿉니다. `--agree-tos`는 Let's Encrypt 이용약관에 동의하는 옵션입니다.
 
 ```bash
-docker compose -f compose.deploy.yaml run --rm --no-deps certbot certonly \
-  --webroot --webroot-path /var/www/certbot \
-  --cert-name outpick.chocobe.shop -d outpick.chocobe.shop \
-  --email YOUR_EMAIL --agree-tos --non-interactive --dry-run
+docker compose \
+-f compose.deploy.yaml \
+run \
+--rm \
+--no-deps \
+certbot certonly \
+--webroot \
+--webroot-path /var/www/certbot \
+--cert-name outpick.chocobe.shop \
+-d outpick.chocobe.shop \
+--email YOUR_EMAIL \
+--agree-tos \
+--non-interactive \
+--dry-run
 ```
 
 `--webroot`는 실행 중인 Nginx를 통해 소유를 확인하고 `certonly`는 인증서만 발급하며 Nginx 설정은 수정하지 않습니다. `--dry-run`은 테스트 발급 환경을 사용하고 인증서를 저장하지 않습니다. 실패하면 DNS·80번 접속·Nginx 로그를 확인하고 실제 발급은 실행하지 않습니다.
@@ -67,10 +83,19 @@ docker compose -f compose.deploy.yaml run --rm --no-deps certbot certonly \
 테스트 성공 후 `--dry-run`을 빼고 실제 인증서를 한 번 발급합니다.
 
 ```bash
-docker compose -f compose.deploy.yaml run --rm --no-deps certbot certonly \
-  --webroot --webroot-path /var/www/certbot \
-  --cert-name outpick.chocobe.shop -d outpick.chocobe.shop \
-  --email YOUR_EMAIL --agree-tos --non-interactive
+docker compose \
+-f compose.deploy.yaml \
+run \
+--rm \
+--no-deps \
+certbot certonly \
+--webroot \
+--webroot-path /var/www/certbot \
+--cert-name outpick.chocobe.shop \
+-d outpick.chocobe.shop \
+--email YOUR_EMAIL \
+--agree-tos \
+--non-interactive
 ```
 
 인증서 저장 경로와 만료일을 확인합니다. `letsencrypt` 볼륨에는 인증서·개인 키·계정·갱신 설정을 저장하고, `certbot-webroot` 볼륨에는 소유 확인 파일을 저장합니다. Nginx는 두 볼륨을 읽기 전용으로 연결합니다. Certbot 컨테이너가 종료돼도 볼륨은 유지됩니다.
@@ -78,8 +103,11 @@ docker compose -f compose.deploy.yaml run --rm --no-deps certbot certonly \
 ## 4. EC2에서 HTTPS 실행하기
 
 ```bash
+# 두 Compose 파일을 합친 설정을 출력 없이 검사하기
 docker compose -f compose.deploy.yaml -f compose.https.yaml config --quiet
+# 임시 컨테이너에서 HTTPS 설정과 인증서 파일 검사만 하기. 서비스는 시작하지 않음
 docker compose -f compose.deploy.yaml -f compose.https.yaml run --rm --no-deps nginx nginx -t
+# HTTPS 구성을 적용해 컨테이너를 백그라운드에서 실행하고 준비 완료까지 기다리기
 docker compose -f compose.deploy.yaml -f compose.https.yaml up -d --wait
 ```
 
@@ -102,23 +130,31 @@ curl --fail -i -w '\n' https://outpick.chocobe.shop/api/v1/examples/1
 
 ```bash
 cd ~/outpick
+# 인증서 갱신 절차만 테스트하기. 실제 인증서 변경과 Nginx 재로드는 하지 않음
 bash scripts/renew-certificates.sh --dry-run
 ```
 
 테스트가 성공하면 EC2의 예약 실행 도구인 systemd에 다음 파일을 등록합니다.
 
 ```bash
+# 자동 갱신 작업 정의 파일을 systemd 설정 디렉터리에 복사하기
 sudo install -m 644 infra/systemd/outpick-certbot-renew.service /etc/systemd/system/
+# 자동 갱신 예약 시간 정의 파일을 systemd 설정 디렉터리에 복사하기
 sudo install -m 644 infra/systemd/outpick-certbot-renew.timer /etc/systemd/system/
+# 복사한 작업과 예약 설정을 systemd가 다시 읽도록 하기
 sudo systemctl daemon-reload
+# 자동 갱신 예약을 즉시 활성화하고 서버 재부팅 후에도 유지하기
 sudo systemctl enable --now outpick-certbot-renew.timer
+# 자동 갱신 예약의 최근 실행 시각과 다음 실행 시각 확인하기
 systemctl list-timers outpick-certbot-renew.timer
 ```
 
 타이머는 하루 두 번 최대 한 시간의 지연을 두고 갱신 필요 여부를 확인합니다. 매번 새 인증서를 발급하는 것은 아닙니다. 갱신 명령 성공 후 Nginx 설정을 검사하고 재로드해 새 인증서를 적용합니다. 실패하면 스크립트가 중단되고 systemd 로그에 남습니다.
 
 ```bash
+# 갱신 작업을 지금 실행하기. 갱신 시점이면 실제 갱신하고 Nginx에 반영함
 sudo systemctl start outpick-certbot-renew.service
+# 갱신 작업의 최근 로그 50줄을 페이지 넘김 없이 출력하기
 sudo journalctl -u outpick-certbot-renew.service --no-pager -n 50
 ```
 
@@ -132,6 +168,7 @@ EC2에서 날짜를 포함한 새 파일명으로 백업합니다.
 
 ```bash
 cd ~/outpick
+# 인증서와 개인 키, 계정, 갱신 설정을 압축 파일로 백업하기
 bash scripts/certificate-storage.sh backup "$HOME/letsencrypt-backup-20261117.tar.gz"
 ```
 
@@ -140,10 +177,15 @@ bash scripts/certificate-storage.sh backup "$HOME/letsencrypt-backup-20261117.ta
 Mac에서 앞서 설정한 `SSH_KEY`, `EC2_IP` 변수로 다운로드합니다. 이미 같은 파일명이 있다면 새로운 이름을 사용합니다.
 
 ```bash
+# 이 터미널에서 새로 만드는 파일과 디렉터리에 다른 사용자의 접근 권한을 주지 않도록 설정하기
 umask 077
+# Mac에 인증서 백업 보관 디렉터리 만들기
 mkdir -p /Users/apple/Desktop/auth-keys/aws-auth-keys/04-team-project/tls
+# 백업 보관 디렉터리에 소유자만 접근할 수 있도록 권한 설정하기
 chmod 700 /Users/apple/Desktop/auth-keys/aws-auth-keys/04-team-project/tls
+# EC2의 인증서 백업 파일을 Mac으로 다운로드하기
 scp -i "$SSH_KEY" "ubuntu@$EC2_IP:~/letsencrypt-backup-20261117.tar.gz" /Users/apple/Desktop/auth-keys/aws-auth-keys/04-team-project/tls/
+# 압축을 풀지 않고 백업에 포함된 파일 이름만 확인하기
 tar -tzf /Users/apple/Desktop/auth-keys/aws-auth-keys/04-team-project/tls/letsencrypt-backup-20261117.tar.gz
 ```
 
@@ -154,6 +196,7 @@ tar -tzf /Users/apple/Desktop/auth-keys/aws-auth-keys/04-team-project/tls/letsen
 Terraform으로 새 EC2를 생성하고 SSH·Docker를 확인합니다. 2번의 파일 업로드와 `.env` 작성을 다시 진행합니다. 새 서버에 HTTP 기본 Compose를 실행한 뒤 Mac에서 보관한 백업을 업로드합니다.
 
 ```bash
+# Mac에 보관한 인증서 백업을 새 EC2의 홈 디렉터리로 업로드하기
 scp -i "$SSH_KEY" /Users/apple/Desktop/auth-keys/aws-auth-keys/04-team-project/tls/letsencrypt-backup-20261117.tar.gz "ubuntu@$EC2_IP:~/"
 ```
 
@@ -161,15 +204,26 @@ scp -i "$SSH_KEY" /Users/apple/Desktop/auth-keys/aws-auth-keys/04-team-project/t
 
 ```bash
 cd ~/outpick
+# 인증서 복원 전에 HTTP 구성으로 컨테이너를 실행하고 준비 완료까지 기다리기
 docker compose -f compose.deploy.yaml up -d --wait
+# 백업 파일을 비어 있는 인증서 볼륨에 복원하기
 bash scripts/certificate-storage.sh restore "$HOME/letsencrypt-backup-20261117.tar.gz"
+# 복원한 인증서의 도메인과 만료일 확인하기
 docker compose -f compose.deploy.yaml run --rm --no-deps certbot certificates
 ```
 
 비어 있는 인증서 볼륨에만 복원합니다. 도메인과 만료일을 확인하고, 백업이 오래됐다면 HTTP가 동작하는 상태에서 갱신 필요 여부를 확인합니다.
 
 ```bash
-docker compose -f compose.deploy.yaml run --rm --no-deps certbot renew --cert-name outpick.chocobe.shop --non-interactive
+# 복원한 인증서의 갱신 필요 여부 확인하기. 갱신 시점이면 실제 갱신함
+docker compose \
+-f compose.deploy.yaml \
+run \
+--rm \
+--no-deps \
+certbot renew \
+--cert-name outpick.chocobe.shop \
+--non-interactive
 ```
 
 아직 유효한 인증서는 계속 사용합니다. 만료됐거나 갱신 시점이면 발급 환경에 연결하므로 DNS와 80번이 동작해야 합니다. 정상 완료 후 4번 HTTPS 실행과 5번 자동 갱신 등록을 반복합니다. 갱신됐다면 새 백업도 다운로드합니다. 단순 서버 재생성 때문에 `certonly`를 반복하거나 `--force-renewal`을 붙이지 않습니다.
