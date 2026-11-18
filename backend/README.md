@@ -4,6 +4,186 @@
 
 MySQL과 Spring Boot 실행 절차는 [프로젝트 README](../README.md)를 참고하세요.
 
+## Docker로 Backend 실행
+
+`compose.yaml`은 개발용 MySQL만 실행합니다. Backend는 IntelliJ에서 실행하며 기존 개발 방법을 유지합니다. `compose.deploy.yaml`은 MySQL·Backend·Nginx를 함께 컨테이너로 실행합니다. 다음 로컬 실행 명령은 프로젝트 루트에서 실행합니다. EC2 적용은 아래의 Nginx 안내에서 별도로 설명합니다.
+
+### 이미지 만들기
+
+Docker Desktop을 실행한 뒤 이미지를 빌드합니다.
+
+```bash
+docker build -t chocobe/outpick-backend:v0 ./backend
+```
+
+`Dockerfile`의 첫 단계는 Java 25 JDK와 저장소의 Gradle Wrapper로 `bootJar`를 실행해 앱 JAR 파일을 만듭니다. 최종 이미지에는 Java 25 JRE와 JAR 파일을 담고, 관리자 권한이 없는 사용자로 앱을 실행합니다. 로컬에 Java를 설치하지 않아도 이미지 빌드가 가능합니다.
+
+`bootJar`는 테스트를 실행하지 않습니다. 자동 테스트는 기존 Backend CI 또는 Docker가 실행 중인 PC의 `backend/`에서 `./gradlew test`로 별도 확인합니다. Testcontainers가 사용하는 Docker 엔진을 이미지 빌드 내부에 연결하지 않습니다.
+
+`backend/`가 Docker에 전달할 파일의 기준 디렉터리입니다. `.dockerignore`는 로컬 빌드 결과와 `.env`, 키 파일 등을 제외합니다. DB 비밀번호는 이미지에 저장하지 않고 컨테이너 실행 시 전달합니다.
+
+### Backend와 MySQL 함께 실행하기
+
+배포용 Compose의 Nginx는 Frontend 파일을 포함한 `chocobe/outpick-frontend:v0` 이미지를 사용합니다. 최초 실행 전에 [Frontend 배포 안내](../frontend/docs/deployment.md)에 따라 이 이미지도 빌드하거나 Docker Hub에서 내려받습니다.
+
+루트 `.env`가 없다면 [MySQL 실행 안내](../README.md#mysql-실행)에 따라 먼저 작성합니다. Compose가 `.env`의 값을 자동으로 읽으므로 터미널에서 `source`나 `set -a`를 실행할 필요가 없습니다. 셸에 같은 이름의 환경 변수가 등록돼 있으면 그 값이 `.env`보다 우선하므로, 앞서 값을 내보냈다면 새 터미널에서 진행합니다.
+
+먼저 설정을 검사합니다. `--quiet`는 비밀번호가 포함된 설정을 화면에 출력하지 않습니다.
+
+```bash
+docker compose -f compose.deploy.yaml config --quiet
+```
+
+오류 없이 끝나면 실행합니다.
+
+```bash
+docker compose -f compose.deploy.yaml up -d --wait --wait-timeout 180
+```
+
+Compose는 다음 순서로 실행합니다.
+
+1. `outpick-network` 네트워크와 MySQL 데이터 볼륨을 준비합니다.
+2. MySQL이 앱용 계정으로 SQL 요청을 처리할 수 있는지 healthcheck로 확인합니다.
+3. MySQL이 `healthy`가 되면 Backend를 실행합니다.
+4. Backend 컨테이너가 시작되면 Nginx를 실행해 HTTP 80번 포트로 `/api/` 요청을 받습니다. Backend 앱의 시작 완료는 로그와 API로 확인합니다.
+
+`--wait`는 MySQL의 정상 상태와 Backend 컨테이너 실행까지 기다립니다. Backend에는 별도 healthcheck가 없으므로 앱 시작 완료 여부는 다음 단계에서 로그와 API로 확인합니다. `restart: unless-stopped`는 오류 종료나 Docker 엔진 재시작 시 컨테이너를 다시 실행하되, 직접 중지한 컨테이너는 중지 상태로 유지하는 설정입니다.
+
+주요 설정은 다음과 같습니다.
+
+| 설정 | 역할 |
+|---|---|
+| `name: outpick-deploy` | 개발용과 컨테이너·데이터 볼륨을 분리하는 Compose 프로젝트 이름 |
+| `networks.default.name: outpick-network` | 세 서비스를 자동으로 연결할 실제 네트워크 이름 |
+| `MYSQL_HOST=mysql`, `MYSQL_PORT=3306` | Backend가 Docker 네트워크 안에서 접근할 MySQL 주소 |
+| `127.0.0.1:18080:8080` | 내 PC의 18080 포트를 Backend 컨테이너의 8080 포트에 연결 |
+| `80:80` | 호스트의 HTTP 80번 포트를 Nginx에 연결 |
+| `./nginx/default.conf` | 컨테이너에 읽기 전용으로 연결할 Nginx 설정 파일. 파일이 없으면 실행 실패 |
+| `outpick-deploy_mysql-data` 볼륨 | 개발용과 별도로 MySQL 데이터를 보관 |
+
+MySQL은 호스트에 포트를 공개하지 않습니다. `.env`의 `MYSQL_PORT`는 개발용 MySQL에만 사용하며, 배포용 Backend는 MySQL 컨테이너 내부 포트 3306을 사용합니다. `MYSQL_ROOT_PASSWORD`는 MySQL 초기화에만 전달하고 Backend에는 전달하지 않습니다.
+
+현재 앱에 DB 접속 설정이 있는 프로필은 `local`이므로 배포용 Compose에서도 이를 명시합니다. 이 파일의 이름만으로 Spring의 운영용 프로필이 적용되지는 않습니다. 운영용 프로필과 CORS 정책은 EC2 배포 단계에서 정합니다.
+
+### 응답 확인과 종료
+
+```bash
+docker compose -f compose.deploy.yaml ps
+docker compose -f compose.deploy.yaml logs --tail 100 backend
+```
+
+로그에 `Started BackendApplication`이 나오면 API를 확인합니다.
+
+```bash
+curl --fail http://localhost:18080/actuator/health
+curl --fail http://localhost:18080/api/v1/examples/1
+```
+
+첫 요청의 `status`는 `UP`이어야 합니다. 두 번째 요청은 `{"name":"예시 액티비티","participantCount":3}`을 반환해야 합니다. 예시 API는 고정 데이터를 반환하므로 DB 연결은 health 응답과 시작 로그로 함께 확인합니다.
+
+배포용 컨테이너를 종료하고 네트워크를 정리하려면 다음 명령을 사용합니다.
+
+```bash
+docker compose -f compose.deploy.yaml down
+```
+
+이미지와 MySQL 데이터 볼륨은 유지됩니다. `down --volumes`는 DB 데이터까지 삭제하므로 데이터 보존이 필요할 때 사용하지 않습니다. 이후에도 동일한 `up` 명령으로 기존 데이터를 사용해 실행할 수 있습니다. 기존 볼륨의 DB 계정·비밀번호는 `.env`를 바꾸는 것만으로 변경되지 않습니다.
+
+개발용과 배포용은 서로 다른 DB입니다. 개발용 데이터는 배포용으로 자동 복사되지 않습니다. 개발용 종료에는 기존 `make compose-down`을 사용하고, 배포용 종료에는 위의 `-f compose.deploy.yaml down`을 사용합니다.
+
+코드 변경 후에는 이미지를 다시 빌드하고 Backend 컨테이너를 교체합니다. MySQL은 그대로 유지합니다.
+
+```bash
+docker build -t chocobe/outpick-backend:v0 ./backend
+docker compose -f compose.deploy.yaml up -d --no-deps --force-recreate backend
+```
+
+Backend의 18080 포트는 루프백 주소에만 공개합니다. 외부 API 요청은 Nginx의 HTTP 80번 포트로 받습니다. Nginx 경유 로컬 확인 주소는 `http://localhost/api/v1/examples/1`이며, 80번이 HTTP 기본 포트라 URL에서 생략할 수 있습니다.
+
+Mac의 Apple Silicon은 ARM64이고 현재 EC2의 t3.small은 AMD64입니다. 기본 명령으로 만든 Mac용 이미지를 EC2에 그대로 옮겨 실행할 수는 없습니다. 사용자가 `chocobe/outpick-backend:v0`에 두 플랫폼 이미지를 Docker Hub로 업로드하고, EC2에서 pull·Compose 실행·정상 API 응답까지 확인했습니다.
+
+참고: [Docker의 여러 단계 빌드](https://docs.docker.com/build/building/multi-stage/), [Compose 시작 순서](https://docs.docker.com/compose/how-tos/startup-order/).
+
+2026-11-16 Apple Silicon Mac에서 Docker 이미지 빌드와 수동 컨테이너 실행으로 MySQL 연결, health의 `UP`, 예시 API 정상 응답을 확인했습니다. 기존 Backend 테스트 38개도 모두 통과했습니다. 이후 EC2 실행 결과는 위의 사용자 확인 기록을 따릅니다.
+
+같은 날 `chocobe/outpick-backend:v0`로 배포용 Compose 설정 검사, MySQL 준비 후 Backend 시작, 공통 네트워크에서의 DB 연결, health의 `UP`, 예시 API 정상 응답을 확인했습니다. 개발용 서비스는 MySQL만 유지되며, 배포용 DB 볼륨이 별도로 생성되는 것도 확인했습니다. 이 Compose 작업에서는 앱 코드를 변경하지 않아 기존 Java 테스트를 다시 실행하지 않았습니다.
+
+## Nginx로 외부 API 접속하기
+
+이번 결과물은 내 Mac의 브라우저에서 `http://EC2_PUBLIC_IP/api/v1/examples/1`로 접속해 예시 JSON을 확인하는 것입니다. `EC2_PUBLIC_IP`는 실제 EC2의 EIP로 바꿉니다.
+
+```text
+브라우저 → EC2의 80번 포트 → Nginx → backend:8080 → Spring Boot
+```
+
+`nginx/default.conf`는 `/api/` 경로만 Backend에 전달합니다. `proxy_pass`에 경로를 덧붙이지 않아 `/api/v1/...`를 그대로 유지합니다. 화면 요청에는 이미지의 Frontend 파일을 제공하고, 없는 파일은 404를 반환합니다. Swagger·Actuator는 외부로 전달하지 않습니다. EC2 내부의 기존 `localhost:18080/actuator/health`는 계속 사용할 수 있습니다.
+
+`backend`는 같은 Docker 네트워크의 서비스 이름입니다. `upstream`은 요청을 전달할 서버 설정이고, `resolver 127.0.0.11`은 Docker 내부 DNS를 사용한다는 뜻입니다. `resolve`와 공유 영역인 `zone`을 함께 사용해 Backend 교체 후 바뀐 IP를 다시 조회합니다. Backend가 교체되는 동안이나 시작 중에는 일시적으로 502가 나올 수 있습니다.
+
+### 내 Mac에서 준비하기
+
+먼저 [HTTP 보안 그룹 적용 안내](../infra/README.md#nginx-외부-http-접속-허용하기)에 따라 Terraform 계획을 확인하고 HTTP 80번을 허용합니다. EC2 교체나 전체 삭제는 이 작업에 필요하지 않습니다.
+
+프로젝트 루트에서 다음 명령으로 EC2에 Nginx 디렉터리를 만듭니다. `/개인키/경로.pem`과 `EC2_PUBLIC_IP`는 실제 값으로 바꿉니다.
+
+```bash
+ssh -i /개인키/경로.pem ubuntu@EC2_PUBLIC_IP 'mkdir -p ~/outpick/nginx'
+scp -i /개인키/경로.pem ./compose.deploy.yaml ubuntu@EC2_PUBLIC_IP:~/outpick/
+scp -i /개인키/경로.pem ./nginx/default.conf ubuntu@EC2_PUBLIC_IP:~/outpick/nginx/
+```
+
+`ssh`는 서버에서 디렉터리 생성 명령을 실행하고, `scp`는 파일을 복사합니다. `-i`는 SSH 개인 키 경로입니다. 목적지의 `:`는 원격 서버 경로를 뜻하므로 생략하지 않습니다. EC2에 작성한 `.env`는 그대로 사용합니다.
+
+### EC2에서 실행하기
+
+다음 명령은 EC2에 SSH로 접속한 터미널에서 순서대로 실행합니다. 각 명령이 오류 없이 끝난 뒤 다음 명령으로 넘어갑니다.
+
+```bash
+cd ~/outpick
+docker compose -f compose.deploy.yaml config --quiet
+docker compose -f compose.deploy.yaml pull nginx
+docker compose -f compose.deploy.yaml run --rm --no-deps nginx nginx -t
+docker compose -f compose.deploy.yaml up -d --wait
+```
+
+- `-f`는 사용할 Compose 파일을 지정합니다.
+- `config --quiet`는 최종 설정을 출력하지 않고 검사합니다.
+- `pull nginx`는 Nginx 이미지를 내려받습니다.
+- `run --rm --no-deps nginx nginx -t`는 Nginx 서비스를 바탕으로 임시 컨테이너를 만들고 설정 문법을 검사합니다. `--rm`은 검사 후 컨테이너를 지우고, `--no-deps`는 다른 서비스를 함께 시작하지 않습니다. `syntax is ok`와 `test is successful`을 확인합니다.
+- `up -d --wait`는 서비스를 백그라운드에서 실행하고 실행 상태를 확인합니다. Backend 앱의 준비 완료는 아래 HTTP 요청으로 확인합니다.
+
+```bash
+curl -i -w '\n' http://localhost/api/v1/examples/1
+```
+
+`curl`은 HTTP 요청을 보내고, `-i`는 상태 코드와 헤더도 보여줍니다. `-w '\n'`은 출력 끝에 줄바꿈을 추가합니다. HTTP 200과 `{"name":"예시 액티비티","participantCount":3}`이 나오면 Nginx의 내부 전달이 정상입니다.
+
+그다음 내 Mac의 브라우저에서 `http://EC2_PUBLIC_IP/api/v1/examples/1`을 엽니다. 반드시 `http://`로 접속합니다. 아직 HTTPS와 도메인은 연결하지 않았습니다. 같은 JSON 응답이 나오면 외부 접속까지 완료입니다.
+
+### 설정 변경과 오류 확인
+
+Nginx 설정 파일만 수정했다면 EC2에 다시 복사한 후 설정 검사와 재적용을 실행합니다.
+
+```bash
+docker compose -f compose.deploy.yaml exec nginx nginx -t
+docker compose -f compose.deploy.yaml exec nginx nginx -s reload
+```
+
+`exec`는 실행 중인 컨테이너 안에서 명령을 실행합니다. `nginx -t`가 성공한 경우에만 `nginx -s reload`로 새 설정을 적용합니다. Compose의 포트나 볼륨 설정을 변경했다면 `up -d --wait`로 반영합니다.
+
+EC2 내부 요청도 실패하면 다음 로그를 확인합니다.
+
+```bash
+docker compose -f compose.deploy.yaml ps
+docker compose -f compose.deploy.yaml logs --tail 100 nginx backend
+```
+
+EC2 내부에서는 정상인데 내 Mac에서 접속이 안 되면 EIP와 보안 그룹의 TCP 80번 허용을 확인합니다. 이 단계에서는 EC2의 앱 8080번·18080번이나 DB 3306번을 외부에 열지 않습니다.
+
+참고: [Nginx proxy_pass](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_pass), [Nginx upstream 주소 갱신](https://nginx.org/en/docs/http/ngx_http_upstream_module.html#resolve).
+
+Frontend 추가 전 로컬 Nginx 1.30.6에서 설정 검사, GET·POST 전달과 Backend의 404 응답을 확인했습니다. 당시 `/`, `/actuator/health`, `/swagger-ui.html`은 404를 반환했습니다. Backend를 다른 내부 IP로 교체한 뒤에도 Nginx 재시작 없이 HTTP 200 응답이 복구됐습니다. 이후 사용자가 EC2에서 외부 브라우저의 예시 API 응답을 확인했고, 2026-11-17 인프라 재생성부터 외부 요청까지 다시 확인했습니다. Frontend 추가 후의 검증 범위는 [Frontend 배포 안내](../frontend/docs/deployment.md#이번-로컬-검증-결과)에 기록합니다.
+
 ## 장소 저장 모델
 
 ERD v3 기반 장소·지역·종목·시즌·출처·공지 엔티티와 Flyway 마이그레이션을 추가했다. 장소와 공지의 게시 상태는 `0=검수 전(기본값)`, `1=공개`, `2=비공개`이며 각각 V2/V3에서 적용한다. 구현 범위, SQL 대비 변경점과 미정 사항은 [장소 모델 문서](docs/place-model.md)를 참고한다. 대표 사진·운영시간 저장 방식은 아직 확정하지 않았다. 검색·상세 API는 구현했으며 등록 API는 후속 작업이다.

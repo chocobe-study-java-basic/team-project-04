@@ -1,0 +1,14 @@
+node_modules
+.next
+out
+build
+coverage
+.git
+.env
+.env.*
+*.pem
+*.key
+*.tsbuildinfo
+.DS_Store
+npm-debug.log*
+AGENTS.md
