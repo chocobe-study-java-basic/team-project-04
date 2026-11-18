@@ -58,7 +58,11 @@ class FavoriteApiTests {
         var second = login("second-favorite@example.com");
         long placeId = createPlace();
 
-        mvc.perform(first.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isNoContent());
+        mvc.perform(first.withCsrf(put(FAVORITES + "/{placeId}", placeId)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.placeId").value(placeId))
+                .andExpect(jsonPath("$.message").value("관심 장소에 저장했습니다."));
         var saved = jdbc.queryForMap("SELECT favorite_id, created_at FROM favorite WHERE place_id = ?", placeId);
         mvc.perform(first.withCsrf(put(FAVORITES + "/{placeId}", placeId)))
                 .andExpect(status().isConflict())
@@ -74,14 +78,18 @@ class FavoriteApiTests {
         mvc.perform(get(FAVORITES).session(second.session()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
 
-        mvc.perform(second.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isNoContent());
-        mvc.perform(first.withCsrf(delete(FAVORITES + "/{placeId}", placeId))).andExpect(status().isNoContent());
-        mvc.perform(first.withCsrf(delete(FAVORITES + "/{placeId}", placeId))).andExpect(status().isNoContent());
+        mvc.perform(second.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isOk());
+        mvc.perform(first.withCsrf(delete(FAVORITES + "/{placeId}", placeId)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.placeId").value(placeId))
+                .andExpect(jsonPath("$.message").value("관심 장소에서 해제했습니다."));
+        mvc.perform(first.withCsrf(delete(FAVORITES + "/{placeId}", placeId))).andExpect(status().isOk());
         mvc.perform(get(FAVORITES).session(first.session()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
         mvc.perform(get(FAVORITES).session(second.session()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(placeId));
-        mvc.perform(first.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isNoContent());
+        mvc.perform(first.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isOk());
     }
 
     @Test
@@ -93,7 +101,7 @@ class FavoriteApiTests {
         mvc.perform(get(FAVORITES)).andExpect(status().isUnauthorized());
         mvc.perform(put(FAVORITES + "/{placeId}", placeId).session(member.session()))
                 .andExpect(status().isForbidden());
-        mvc.perform(member.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isNoContent());
+        mvc.perform(member.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isOk());
         mvc.perform(delete(FAVORITES + "/{placeId}", placeId).session(member.session()))
                 .andExpect(status().isForbidden());
         mvc.perform(get(FAVORITES).session(member.session()))
@@ -106,7 +114,7 @@ class FavoriteApiTests {
     void preservesTheFavoriteWhenAPlaceIsHiddenAndAllowsItsRemoval() throws Exception {
         var member = login("hidden-favorite@example.com");
         long placeId = createPlace();
-        mvc.perform(member.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isNoContent());
+        mvc.perform(member.withCsrf(put(FAVORITES + "/{placeId}", placeId))).andExpect(status().isOk());
 
         var place = places.findById(placeId).orElseThrow();
         place.changePublishStatus(PlacePublishStatus.HIDDEN);
@@ -119,7 +127,7 @@ class FavoriteApiTests {
                 .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
         assertThat(favoriteCount(placeId)).isEqualTo(1);
 
-        mvc.perform(member.withCsrf(delete(FAVORITES + "/{placeId}", placeId))).andExpect(status().isNoContent());
+        mvc.perform(member.withCsrf(delete(FAVORITES + "/{placeId}", placeId))).andExpect(status().isOk());
         assertThat(favoriteCount(placeId)).isZero();
     }
 
@@ -137,7 +145,7 @@ class FavoriteApiTests {
             assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
             start.countDown();
             assertThat(java.util.List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS)))
-                    .containsExactlyInAnyOrder(204, 409);
+                    .containsExactlyInAnyOrder(200, 409);
         }
         assertThat(favoriteCount(placeId)).isEqualTo(1);
     }
