@@ -1,6 +1,7 @@
 package com.outpick.domain.favorite.controller;
 
 import com.outpick.domain.favorite.service.FavoriteService;
+import com.outpick.domain.member.security.MemberSessionPrincipal;
 import com.outpick.domain.place.dto.PlaceSummaryResponse;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
@@ -24,20 +25,20 @@ public class FavoriteController {
 
     @GetMapping
     public List<PlaceSummaryResponse> findMyFavorites(Authentication authentication) {
-        return favoriteService.findPlaces((Long) authentication.getPrincipal());
+        return favoriteService.findPlaces(((MemberSessionPrincipal) authentication.getPrincipal()).memberId());
     }
 
     @PutMapping("/{placeId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void save(Authentication authentication,
                      @PathVariable("placeId") @Positive(message = "장소 ID는 1 이상이어야 합니다.") long placeId) {
-        favoriteService.save((Long) authentication.getPrincipal(), placeId);
+        favoriteService.save(((MemberSessionPrincipal) authentication.getPrincipal()).memberId(), placeId);
     }
 
     @DeleteMapping("/{placeId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void remove(Authentication authentication,
                        @PathVariable("placeId") @Positive(message = "장소 ID는 1 이상이어야 합니다.") long placeId) {
-        favoriteService.remove((Long) authentication.getPrincipal(), placeId);
+        favoriteService.remove(((MemberSessionPrincipal) authentication.getPrincipal()).memberId(), placeId);
     }
 }
