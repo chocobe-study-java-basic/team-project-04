@@ -7,6 +7,7 @@ import com.outpick.domain.place.entity.Region;
 import com.outpick.domain.place.repository.PlaceRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -50,6 +51,7 @@ class FavoriteApiTests {
     @Autowired TransactionTemplate transactions;
 
     @Test
+    @DisplayName("관심 장소는 중복 저장되지 않고 회원별로 조회·해제된다")
     void storesOneFavoritePerMemberAndRemovesOnlyTheCurrentMembersFavorite() throws Exception {
         var first = login("first-favorite@example.com");
         var second = login("second-favorite@example.com");
@@ -73,6 +75,7 @@ class FavoriteApiTests {
     }
 
     @Test
+    @DisplayName("관심 장소는 로그인과 CSRF를 검증하고 공개 장소는 비회원도 조회한다")
     void requiresSessionAndCsrfAndKeepsPublicPlaceAccess() throws Exception {
         var member = login("protected-favorite@example.com");
         long placeId = createPlace();
@@ -89,6 +92,7 @@ class FavoriteApiTests {
     }
 
     @Test
+    @DisplayName("비공개 장소의 관심 기록은 보존하고 목록에서 숨기며 해제를 허용한다")
     void preservesTheFavoriteWhenAPlaceIsHiddenAndAllowsItsRemoval() throws Exception {
         var member = login("hidden-favorite@example.com");
         long placeId = createPlace();
@@ -110,6 +114,7 @@ class FavoriteApiTests {
     }
 
     @Test
+    @DisplayName("동시에 같은 관심 장소를 저장해도 한 건을 유지한다")
     void concurrentSavesReturnSuccessAndLeaveOneRow() throws Exception {
         var member = login("concurrent-favorite@example.com");
         long placeId = createPlace();
