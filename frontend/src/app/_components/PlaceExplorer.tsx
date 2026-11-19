@@ -10,6 +10,7 @@ import PlaceSearchForm from './PlaceSearchForm';
 import PlacePhoto, { PlacePhotoCredit } from '@/domains/place/components/PlacePhoto';
 import KakaoPlaceMap from '@/domains/place/components/KakaoPlaceMap';
 import CopyPlaceLinkButton from '@/domains/place/components/CopyPlaceLinkButton';
+import MemberHeaderLink from '@/domains/member/components/MemberHeaderLink';
 import type { PlaceMapBounds, PlaceMapView } from '@/domains/place/types/kakaoMap.type';
 import { readPlaceMapBounds, readPlaceMapParams, writePlaceMapParams } from '@/domains/place/lib/placeMapParams';
 import { usePlaces } from '@/domains/place/hooks/usePlaces';
@@ -103,7 +104,7 @@ export default function PlaceExplorer() {
         <div className="outpick-headerActions">
           <span className="outpick-previewBadge">탐색 화면 미리보기</span>
           <CopyPlaceLinkButton label="검색 링크 복사" />
-          <Link className="outpick-accountLink" href="/login/">로그인</Link>
+          <MemberHeaderLink />
         </div>
       </header>
 
