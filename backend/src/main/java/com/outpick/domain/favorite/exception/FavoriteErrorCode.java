@@ -6,7 +6,8 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 public enum FavoriteErrorCode {
-    FAVORITE_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 관심 장소에 저장된 장소입니다.");
+    FAVORITE_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 관심 장소에 저장된 장소입니다."),
+    FAVORITE_NOT_FOUND(HttpStatus.NOT_FOUND, "관심 장소를 찾을 수 없습니다.");
 
     private final ErrorCode errorCode;
 
