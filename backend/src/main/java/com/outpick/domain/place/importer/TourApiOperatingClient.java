@@ -1,0 +1,41 @@
+package com.outpick.domain.place.importer;
+
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+
+public class TourApiOperatingClient {
+    private final TourIntroTransport transport;
+    private final TourApiNormalizer normalizer = new TourApiNormalizer();
+    private final JsonMapper mapper = JsonMapper.builder().build();
+
+    public TourApiOperatingClient(TourIntroTransport transport) { this.transport = transport; }
+
+    public TourOperatingSnapshot getOperatingInfo(String contentId) {
+        String raw = transport.fetchIntro(contentId);
+        try {
+            var response = mapper.readTree(raw).path("response");
+            String code = response.path("header").path("resultCode").asString("");
+            if (!"0000".equals(code) && !"00".equals(code)) throw invalid();
+            var item = response.path("body").path("items").path("item");
+            if (item.isArray()) {
+                if (item.size() != 1) throw invalid();
+                item = item.path(0);
+            }
+            if (!item.isObject() || !contentId.equals(item.path("contentid").asString(""))
+                    || !"28".equals(item.path("contenttypeid").asString(""))) throw invalid();
+            String hours = text(item, "usetimeleports", 10000);
+            String rest = text(item, "restdateleports", 10000);
+            String phone = text(item, "infocenterleports", 100);
+            if (hours == null && rest == null && phone == null) throw invalid();
+            return new TourOperatingSnapshot(contentId, hours, rest, phone);
+        } catch (RuntimeException exception) { throw invalid(); }
+    }
+
+    private String text(JsonNode item, String name, int max) {
+        String value = normalizer.text(item.path(name).asString(""));
+        if (value.length() > max) throw invalid();
+        return value.isBlank() ? null : value;
+    }
+
+    private TourApiException invalid() { return new TourApiException(TourApiException.Reason.INVALID_RESPONSE); }
+}

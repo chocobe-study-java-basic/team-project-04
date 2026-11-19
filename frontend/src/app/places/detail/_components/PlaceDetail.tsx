@@ -10,6 +10,7 @@ import { safeHttpUrl } from '@/domains/place/lib/placeLinks';
 import { ApiError } from '@/shared/lib/http/apiError';
 import { getListReturnUrl } from '@/domains/place/lib/placeNavigation';
 import './PlaceDetail.css';
+import OperatingInfoPanel from './OperatingInfoPanel';
 
 export default function PlaceDetail() {
   const params = useSearchParams();
@@ -41,7 +42,7 @@ export default function PlaceDetail() {
           <section className="outpick-detailEmpty" role="alert"><h1>장소 정보를 불러오지 못했어요</h1><p>서버 연결을 확인하고 다시 시도해 주세요.</p><button type="button" className="outpick-returnButton" onClick={() => void detail.refetch()}>다시 시도</button></section>
         ) : !place ? <p role="status">장소 정보를 불러오고 있어요.</p> : (
           <>
-            <p className="outpick-detailSample">{place.name?.startsWith('[데모]') ? '개발용 가상 장소 · 실제 시설·주소·운영 정보가 아닙니다.' : 'DB 조회 정보 · 미확인 항목은 미확인으로 표시합니다.'}</p>
+            <p className="outpick-detailSample">{place.name?.startsWith('[데모]') ? '개발용 가상 장소 · 실제 시설·주소·운영 정보가 아닙니다.' : '방문 전 공식 안내를 확인하세요. 미확인 항목은 미확인으로 표시합니다.'}</p>
             <div className="outpick-detailHero">
               <div className="outpick-detailIntro">
                 <p className="outpick-detailEyebrow">EXPLORE THE OUTSIDE</p>
@@ -73,10 +74,13 @@ export default function PlaceDetail() {
                   {place.activities.length === 0 && <p>등록된 활동 정보가 없습니다.</p>}
                   <p>시즌은 활동을 찾기 위한 분류입니다. 현재 운영 여부와 방문 가능한 날짜는 공식 안내를 확인하세요.</p>
                 </section>
+                <section className="outpick-detailSection" aria-labelledby="place-operating-info">
+                  <h2 id="place-operating-info">운영 정보</h2>
+                  <OperatingInfoPanel info={place.operatingInfo} />
+                </section>
                 <section className="outpick-detailSection" aria-labelledby="place-notices">
-                  <h2 id="place-notices">운영 안내 및 공지</h2>
-                  {place.notices.length ? place.notices.map(notice => <article className="outpick-notice" key={notice.placeNoticeId}><h3>{notice.title ?? '공지'}</h3><p>{notice.content}</p></article>) : <p>확인된 운영 공지가 없습니다.</p>}
-                  <p>운영시간·이용 조건·휴장 여부는 미확인 상태입니다.</p>
+                  <h2 id="place-notices">운영 공지</h2>
+                  {place.notices.length ? place.notices.map(notice => <article className="outpick-notice" key={notice.placeNoticeId}><h3>{notice.title ?? '공지'}</h3><p>{notice.content}</p></article>) : <p>등록된 운영 공지가 없습니다.</p>}
                 </section>
                 <section className="outpick-detailSection" aria-labelledby="place-sources">
                   <h2 id="place-sources">정보 출처 및 확인일</h2>
@@ -92,11 +96,11 @@ export default function PlaceDetail() {
                 <h2 id="visit-information">방문 전 확인하세요</h2>
                 <dl className="outpick-detailFacts">
                   <div><dt>상세 주소</dt><dd>{place.address ?? '미확인'}</dd></div>
-                  <div><dt>운영 정보 상태</dt><dd>{place.operationStatus ?? '미확인'}</dd></div>
+                  <div><dt>현재 운영 여부</dt><dd>{place.operationStatus ?? '미확인'}</dd></div>
                   <div><dt>공식 홈페이지</dt><dd>{homepage ? <a href={homepage} target="_blank" rel="noopener noreferrer">공식 안내 열기 ↗</a> : '미등록'}</dd></div>
                 </dl>
                 {place.latitude !== null && place.longitude !== null && <a className="outpick-returnButton" target="_blank" rel="noopener noreferrer" href={`https://map.kakao.com/link/to/${encodeURIComponent(place.name ?? '장소')},${place.latitude},${place.longitude}`}>카카오맵 길찾기 ↗</a>}
-                <p className="outpick-visitNote">방문 전 공식 안내를 확인하세요. [데모] 장소의 좌표와 주소는 실제 시설 위치가 아닙니다.</p>
+                <p className="outpick-visitNote">{place.name?.startsWith('[데모]') ? '방문 전 공식 안내를 확인하세요. [데모] 장소의 좌표와 주소는 실제 시설 위치가 아닙니다.' : '방문 전 운영시간과 이용 조건을 공식 안내에서 확인하세요.'}</p>
                 <Link href={returnUrl} scroll={false} className="outpick-returnButton">다른 장소 살펴보기</Link>
               </aside>
             </div>

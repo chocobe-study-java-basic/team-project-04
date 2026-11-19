@@ -8,7 +8,7 @@
 - V7: `create_tour_api_import_tracking`.
 - V8: `create_favorites` (#14).
 - V9: `create_place_representative_image` (기존 사진 V8).
-- V10: `create_place_operating_info` (아직 미공유인 운영 정보, 기존 V9).
+- V10: `create_place_operating_info` (운영 정보 수집·표시, 기존 V9).
 
 회원 → 재설정 → 장소 수집 → 관심 장소 → 사진 → 운영 정보 순서로 적용한다. 아직 없는 파일이나 성공 이력을 임의로 만들지 않는다.
 

@@ -25,6 +25,34 @@ class TourImportPersistenceTests {
     static MySQLContainer mysql = new MySQLContainer("mysql:8.4.13");
     @Autowired TourImportWriter writer;
     @Autowired JdbcTemplate jdbc;
+    @Autowired TourOperatingInfoWriter operatingWriter;
+
+    @Test
+    @DisplayName("운영 정보는 미검수로 최초 저장하고 재수집으로 검토 값을 덮어쓰지 않는다")
+    void initialOperatingCollectionIsUnverifiedAndNeverOverwritesReviewedValues() {
+        var imported = writer.save(candidate("106"));
+        assertThat(operatingWriter.saveInitial(new TourOperatingSnapshot("106", "평일 10:00", "월요일", "1855-3946"))).isEqualTo("CREATED");
+        assertThat(jdbc.queryForObject("select verification_status from place_operating_info where place_id=?", String.class, imported.placeId()))
+                .isEqualTo("UNVERIFIED");
+        assertThat(jdbc.queryForObject("select verified_at from place_operating_info where place_id=?", java.time.LocalDateTime.class, imported.placeId())).isNull();
+        assertThat(jdbc.queryForObject("select collected_at from place_operating_info where place_id=?", java.time.LocalDateTime.class, imported.placeId())).isNotNull();
+        jdbc.update("update place_operating_info set verification_status='NEEDS_REVIEW',review_note='공식 안내와 다름' where place_id=?", imported.placeId());
+        assertThat(operatingWriter.saveInitial(new TourOperatingSnapshot("106", "다른 시간", null, null))).isEqualTo("SKIPPED");
+        assertThat(jdbc.queryForObject("select operating_hours from place_operating_info where place_id=?", String.class, imported.placeId())).isEqualTo("평일 10:00");
+        assertThat(jdbc.queryForObject("select review_note from place_operating_info where place_id=?", String.class, imported.placeId())).isEqualTo("공식 안내와 다름");
+    }
+
+    @Test
+    @DisplayName("잘못된 운영 정보 저장을 롤백하고 다시 수집할 수 있다")
+    void invalidOperatingCollectionRollsBackAndCanBeRetried() {
+        var imported = writer.save(candidate("107"));
+        assertThatThrownBy(() -> operatingWriter.saveInitial(new TourOperatingSnapshot("107", null, null, null)))
+                .isInstanceOf(RuntimeException.class);
+        assertThat(jdbc.queryForObject("select count(*) from place_operating_info where place_id=?", Integer.class, imported.placeId())).isZero();
+        assertThat(operatingWriter.saveInitial(new TourOperatingSnapshot("107", "10:00", null, null))).isEqualTo("CREATED");
+        assertThatThrownBy(() -> operatingWriter.saveInitial(new TourOperatingSnapshot("999999", "10:00", null, null)))
+                .isInstanceOf(RuntimeException.class);
+    }
 
     private TourImportCandidate candidate(String id) {
         return new TourApiNormalizer().normalize(TourApiTests.target(id), TourApiTests.place(id, "126.1", ""));

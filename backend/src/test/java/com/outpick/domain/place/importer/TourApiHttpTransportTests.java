@@ -30,6 +30,10 @@ class TourApiHttpTransportTests {
         assertThat(request.getValue().uri().getHost()).isEqualTo("apis.data.go.kr");
         assertThat(request.getValue().uri().getRawQuery()).contains("serviceKey=a%2Bb%2Fc%3D%3D", "contentId=123");
         assertThat(request.getValue().timeout()).isPresent();
+        new TourApiHttpTransport("a+b/c==", client).fetchIntro("123");
+        verify(client, times(2)).send(request.capture(), any(HttpResponse.BodyHandler.class));
+        assertThat(request.getValue().uri().getPath()).endsWith("/detailIntro2");
+        assertThat(request.getValue().uri().getRawQuery()).contains("contentTypeId=28", "serviceKey=a%2Bb%2Fc%3D%3D");
     }
 
     @Test

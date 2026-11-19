@@ -9,6 +9,7 @@
 ## 응답 필드
 
 - 기본 정보: `id`, `name`, `nameAlias`, `description`, `address`, `latitude`, `longitude`, `homepage`, `operationStatus`, `reviewedAt`.
+- `operatingInfo`: 별도로 수집한 참고 운영 안내 또는 null. 이용시간·휴무일·문의전화, 수집일, 검수 상태·검수일 및 공식 대조 메모를 포함한다. `operationStatus`나 검수된 공지와 구분하며 [수집 운영 안내 계약](place-operating-info.md)을 따른다.
 - DB의 `introduce`는 응답의 `description`으로 변환한다. 미확인 기본 정보는 NULL을 유지한다. `operationStatus`를 근거 없이 영업 중으로 채우지 않는다.
 - `representativeImage`: 검수된 대표 사진의 원본 URL 문자열이며 사진이 없으면 NULL이다. 출처를 나타내는 `imageAttribution`, `imageSourceUrl`, `imageLicense`가 함께 반환된다. [대표 사진 저장·표시 정책](place-images.md)을 참고한다.
 - `activities`: `placeActivityId`, `activityTypeId`, `activityTypeName`, `environmentType`, `seasons` 목록. 시즌은 장소 전체가 아닌 해당 장소별 종목에 묶는다. 활동은 연결 ID 오름차순, 시즌은 DB 문자열 오름차순으로 정렬한다.
