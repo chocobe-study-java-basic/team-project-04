@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import PlaceDetail from './_components/PlaceDetail';
+import PlaceDetail from './_components/PlaceDetail/PlaceDetail';
 
 export const metadata: Metadata = { title: '장소 상세 | OUTPICK' };
 

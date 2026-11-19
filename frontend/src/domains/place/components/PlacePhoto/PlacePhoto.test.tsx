@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import '../../../../tests/setup-dom';
+import '../../../../../tests/setup-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import PlacePhoto, { PlacePhotoCredit, getPlacePhoto } from './PlacePhoto';

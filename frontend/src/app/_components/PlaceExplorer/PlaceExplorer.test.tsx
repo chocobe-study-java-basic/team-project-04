@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
-import '../../../tests/setup-dom';
+import '../../../../tests/setup-dom';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { server } from '../../../tests/mocks/server';
-import QueryProvider from '../_providers/QueryProvider';
+import { server } from '../../../../tests/mocks/server';
+import QueryProvider from '../../_providers/QueryProvider';
 import PlaceExplorer from './PlaceExplorer';
 import type { PlaceMapBounds, PlaceMapItem, PlaceMapView } from '@/domains/place/types/kakaoMap.type';
 
-vi.mock('@/domains/place/components/KakaoPlaceMap', () => ({
+vi.mock('@/domains/place/components/KakaoPlaceMap/KakaoPlaceMap', () => ({
   default: ({ places, onBoundsChange, view }: { places: PlaceMapItem[]; onBoundsChange: (bounds: PlaceMapBounds, view: PlaceMapView) => void; view: PlaceMapView | null }) => (
     <div aria-label="테스트 지도" data-view={JSON.stringify(view)} data-ids={places.map(place => place.id).join(',')}>
       <button onClick={() => onBoundsChange({ south: 37.37, north: 37.38, west: 128.39, east: 128.66 }, { lat: 37.375, lng: 128.525, level: 8 })}>테스트 지도 이동</button>

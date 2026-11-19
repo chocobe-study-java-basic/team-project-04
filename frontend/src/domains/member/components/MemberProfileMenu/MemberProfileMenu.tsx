@@ -3,32 +3,34 @@
 import { CircleUserRound } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useId, useRef, useState } from 'react';
-import { currentMember } from '../api/memberApi';
+import { currentMember } from '../../api/memberApi';
 import { ApiError } from '@/shared/lib/http/apiError';
+import { profileMenuItems, type ProfileMenuAudience } from './profileMenuItems';
 
 const profileLinkClassName = 'block hover:bg-[#f3f1ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5147ff]';
 
-type MemberStatus =
-  | { kind: 'checking' | 'signed-out' | 'error' }
-  | { kind: 'signed-in'; isAdmin: boolean };
+type MemberStatus = 'checking' | 'error' | ProfileMenuAudience;
 
 /** 현재 회원의 로그인 상태와 역할에 맞춰 헤더의 프로필 링크를 표시합니다. */
 export default function MemberProfileMenu() {
-  const [memberStatus, setMemberStatus] = useState<MemberStatus>({ kind: 'checking' });
+  const [memberStatus, setMemberStatus] = useState<MemberStatus>('checking');
   const [isOpen, setIsOpen] = useState(false);
   const menuId = useId();
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const visibleMenuItems = memberStatus === 'checking' || memberStatus === 'error'
+    ? []
+    : profileMenuItems.filter(item => item.visibleTo.includes(memberStatus));
 
   useEffect(() => {
     let active = true;
     currentMember().then(member => {
-      if (active) setMemberStatus({ kind: 'signed-in', isAdmin: member.role === 'ADMIN' });
+      if (active) setMemberStatus(member.role === 'ADMIN' ? 'admin' : 'member');
     })
       .catch(cause => {
         if (!active) return;
         const signedOut = cause instanceof ApiError && cause.details.kind === 'http' && cause.details.status === 401;
-        setMemberStatus({ kind: signedOut ? 'signed-out' : 'error' });
+        setMemberStatus(signedOut ? 'guest' : 'error');
       });
     return () => { active = false; };
   }, []);
@@ -75,19 +77,13 @@ export default function MemberProfileMenu() {
           shadow-[0_12px_28px_rgb(22_36_59_/_12%)] *:rounded-lg *:px-3 *:py-2.5"
         hidden={!isOpen}
       >
-        {memberStatus.kind === 'checking' && <p role="status">계정 상태를 확인하고 있어요.</p>}
-        {memberStatus.kind === 'error' && <p role="alert">계정 정보를 확인하지 못했어요.</p>}
-        {memberStatus.kind === 'signed-out' && (
-          <Link href="/login/" className={profileLinkClassName} onClick={() => setIsOpen(false)}>로그인</Link>
-        )}
-        {memberStatus.kind === 'signed-in' && (
-          <>
-            <Link href="/account/" className={profileLinkClassName} onClick={() => setIsOpen(false)}>마이페이지</Link>
-            {memberStatus.isAdmin && (
-              <Link href="/admin/" className={profileLinkClassName} onClick={() => setIsOpen(false)}>관리자 화면</Link>
-            )}
-          </>
-        )}
+        {memberStatus === 'checking' && <p role="status">계정 상태를 확인하고 있어요.</p>}
+        {memberStatus === 'error' && <p role="alert">계정 정보를 확인하지 못했어요.</p>}
+        {visibleMenuItems.map(({ href, label }) => (
+          <Link key={href} href={href} className={profileLinkClassName} onClick={() => setIsOpen(false)}>
+            {label}
+          </Link>
+        ))}
       </div>
     </div>
   );

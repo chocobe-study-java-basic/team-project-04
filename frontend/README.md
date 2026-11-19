@@ -270,7 +270,7 @@ TanStack Query 5.107.1로 서버 응답·로딩·오류·캐시를 관리한다.
 src/
 ├── app/
 │   ├── _providers/QueryProvider.tsx
-│   └── (main)/main-example/_components/
+│   └── (main)/main-example/_components/MainExampleContent/
 │       ├── MainExampleContent.tsx
 │       └── MainExampleContent.test.tsx
 ├── domains/example/
@@ -364,7 +364,9 @@ frontend/src/
 │   │   └── main-example/
 │   │       ├── page.tsx
 │   │       ├── _components/
-│   │       │   └── MainExampleContent.tsx
+│   │       │   └── MainExampleContent/
+│   │       │       ├── MainExampleContent.tsx
+│   │       │       └── MainExampleContent.test.tsx
 │   │       └── _hooks/                # 페이지 전용 Hook이 필요할 때
 │   └── (admin)/
 │       ├── layout.tsx                 # AdminLayout 적용
@@ -421,6 +423,8 @@ frontend/src/
 참조 방향은 `app → domains → shared`와 `app → shared`로 유지한다. `domains`는 `app`을 참조하지 않고, `shared`는 `app`이나 `domains`를 참조하지 않는다.
 
 페이지 전용 컴포넌트는 여러 도메인 기능을 조합할 수 있다. 일반 화면과 관리자 화면이 같은 장소 API를 사용해도 장소 코드는 `domains/place/`에서 관리한다. 페이지나 레이아웃 종류마다 도메인을 만들지 않는다.
+
+컴포넌트 전용 테스트, 설정, 스타일처럼 관련 파일이 여러 개면 컴포넌트 이름과 같은 디렉터리에 함께 둔다. 구현 파일 하나로 구성된 컴포넌트는 해당 `components/` 또는 `_components/` 바로 아래에 둘 수 있다. [프로필 메뉴 배치 예시](src/domains/member/components/MemberProfileMenu/)
 
 Query Key는 각 Hook에 문자열로 흩어 놓지 않고 도메인의 `queries/`에서 함께 정의한다. 서버 응답은 TanStack Query가 관리하고 Zustand에 복사하지 않는다. 도메인 전용 공유 UI 상태는 해당 도메인의 `stores/`에, 여러 도메인에서 사용하는 공통 UI 상태는 `shared/stores/`에 둔다. 한 컴포넌트의 상태와 URL 검색 조건은 [상태 관리 규칙](#상태-관리-규칙)을 따른다.
 

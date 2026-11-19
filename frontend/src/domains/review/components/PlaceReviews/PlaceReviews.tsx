@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { currentMember, type Member } from '@/domains/member/api/memberApi';
 import { ApiError } from '@/shared/lib/http/apiError';
 import { createReview, deleteReview, deleteReviewPhoto, listReviews, photoUrl, reportReview,
-  updateReview, uploadReviewPhoto, type Review } from '../api/reviewApi';
+  updateReview, uploadReviewPhoto, type Review } from '../../api/reviewApi';
 import './PlaceReviews.css';
 
 export default function PlaceReviews({ placeId }: { placeId: number }) {

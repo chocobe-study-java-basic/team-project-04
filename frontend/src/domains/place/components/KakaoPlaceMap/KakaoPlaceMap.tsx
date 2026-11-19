@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { loadKakaoMaps } from '../lib/loadKakaoMaps';
-import { sameMapView } from '../lib/placeMapParams';
-import type { KakaoMap, KakaoMapsApi, KakaoOverlay, PlaceMapBounds, PlaceMapView, PlaceMapItem } from '../types/kakaoMap.type';
+import { loadKakaoMaps } from '../../lib/loadKakaoMaps';
+import { sameMapView } from '../../lib/placeMapParams';
+import type { KakaoMap, KakaoMapsApi, KakaoOverlay, PlaceMapBounds, PlaceMapView, PlaceMapItem } from '../../types/kakaoMap.type';
 import './KakaoPlaceMap.css';
 
 type MapContext = { api: KakaoMapsApi; map: KakaoMap };

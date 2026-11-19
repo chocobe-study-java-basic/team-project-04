@@ -2,16 +2,16 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import PlacePhoto, { PlacePhotoCredit, getPlacePhoto } from '@/domains/place/components/PlacePhoto';
-import CopyPlaceLinkButton from '@/domains/place/components/CopyPlaceLinkButton';
+import PlacePhoto, { PlacePhotoCredit, getPlacePhoto } from '@/domains/place/components/PlacePhoto/PlacePhoto';
+import CopyPlaceLinkButton from '@/domains/place/components/CopyPlaceLinkButton/CopyPlaceLinkButton';
 import { usePlaceDetail } from '@/domains/place/hooks/usePlaces';
 import { environmentLabel, seasonLabel } from '@/domains/place/api/placeApi';
 import { safeHttpUrl } from '@/domains/place/lib/placeLinks';
 import { ApiError } from '@/shared/lib/http/apiError';
 import { getListReturnUrl } from '@/domains/place/lib/placeNavigation';
-import PlaceReviews from '@/domains/review/components/PlaceReviews';
+import PlaceReviews from '@/domains/review/components/PlaceReviews/PlaceReviews';
 import './PlaceDetail.css';
-import OperatingInfoPanel from './OperatingInfoPanel';
+import OperatingInfoPanel from '../OperatingInfoPanel/OperatingInfoPanel';
 
 export default function PlaceDetail() {
   const params = useSearchParams();

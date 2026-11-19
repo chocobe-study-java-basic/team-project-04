@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ApiError } from '@/shared/lib/http/apiError';
-import { dismissReviewReport, hideReview, pendingReviewReports, type ReviewReport } from '../api/reviewApi';
+import { dismissReviewReport, hideReview, pendingReviewReports, type ReviewReport } from '../../api/reviewApi';
 import './ReviewReportsAdmin.css';
 
 export default function ReviewReportsAdmin() {

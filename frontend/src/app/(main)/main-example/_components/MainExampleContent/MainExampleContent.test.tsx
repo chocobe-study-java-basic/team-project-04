@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 
-import '../../../../../tests/setup-dom';
+import '../../../../../../tests/setup-dom';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { delay, http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
-import { server } from '../../../../../tests/mocks/server';
+import { server } from '../../../../../../tests/mocks/server';
 import QueryProvider from '@/app/_providers/QueryProvider';
 import MainExampleContent from './MainExampleContent';
 

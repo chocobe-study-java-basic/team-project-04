@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import type { PlaceSummary } from '../types/placeApi.type';
-import PlaceArtwork from './PlaceArtwork';
+import type { PlaceSummary } from '../../types/placeApi.type';
+import PlaceArtwork from '../PlaceArtwork/PlaceArtwork';
 import './PlacePhoto.css';
 
 export function getPlacePhoto(place: PlaceSummary) {

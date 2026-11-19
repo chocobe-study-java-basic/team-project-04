@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import '../../../../../tests/setup-dom';
+import '../../../../../../tests/setup-dom';
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { server } from '../../../../../tests/mocks/server';
-import QueryProvider from '../../../_providers/QueryProvider';
+import { server } from '../../../../../../tests/mocks/server';
+import QueryProvider from '../../../../_providers/QueryProvider';
 import PlaceDetail from './PlaceDetail';
 vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(window.location.search) }));
 const base='https://api.outpick.test/api/v1/places';

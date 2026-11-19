@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 
-import '../../../../tests/setup-dom';
+import '../../../../../tests/setup-dom';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
-import { server } from '../../../../tests/mocks/server';
+import { server } from '../../../../../tests/mocks/server';
 import MemberProfileMenu from './MemberProfileMenu';
 
 const memberUrl = 'https://api.outpick.test/api/v1/members/me';

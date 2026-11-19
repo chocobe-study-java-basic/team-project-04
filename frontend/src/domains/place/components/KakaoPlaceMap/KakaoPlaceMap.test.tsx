@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
 
-import '../../../../tests/setup-dom';
+import '../../../../../tests/setup-dom';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { samplePlaces } from '../data/samplePlaces';
-import { loadKakaoMaps } from '../lib/loadKakaoMaps';
-import type { KakaoMap, KakaoMapsApi } from '../types/kakaoMap.type';
+import { samplePlaces } from '../../data/samplePlaces';
+import { loadKakaoMaps } from '../../lib/loadKakaoMaps';
+import type { KakaoMap, KakaoMapsApi } from '../../types/kakaoMap.type';
 import KakaoPlaceMap from './KakaoPlaceMap';
 
-vi.mock('../lib/loadKakaoMaps', () => ({ loadKakaoMaps: vi.fn() }));
+vi.mock('../../lib/loadKakaoMaps', () => ({ loadKakaoMaps: vi.fn() }));
 
 function createFakeSdk() {
   let element: HTMLElement;
