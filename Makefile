@@ -141,4 +141,3 @@ frontend-docker-build:
 # Mac과 EC2용 이미지를 함께 빌드해 업로드합니다. Docker Hub 로그인이 필요합니다.
 frontend-docker-build-push:
 	node frontend/scripts/docker-build.mjs --push "$(IMAGE_TAG)"
-
