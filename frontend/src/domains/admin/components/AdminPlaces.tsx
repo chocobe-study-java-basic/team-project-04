@@ -4,16 +4,10 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { getPlaceCatalog } from '@/domains/place/api/placeApi';
 import { createPlaceDraft, getAdminPlaces, type AdminPlace } from '../api/adminApi';
-import AdminAccess from './AdminAccess';
-import './admin.css';
 
 type RegionOption = { id: number; name: string };
 
 export default function AdminPlaces() {
-  return <AdminAccess><PlacesContent /></AdminAccess>;
-}
-
-function PlacesContent() {
   const [regions, setRegions] = useState<RegionOption[]>([]);
   const [places, setPlaces] = useState<AdminPlace[]>([]);
   const [regionId, setRegionId] = useState('');

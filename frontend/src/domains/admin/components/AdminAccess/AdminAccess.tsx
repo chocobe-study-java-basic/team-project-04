@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { currentMember } from '@/domains/member/api/memberApi';
 import { ApiError } from '@/shared/lib/http/apiError';
 
+/** 현재 회원이 운영자로 확인된 뒤에 관리자 화면을 표시합니다. */
 export default function AdminAccess({ children }: { children: React.ReactNode }) {
   const [access, setAccess] = useState<'loading' | 'allowed' | 'login' | 'denied' | 'error'>('loading');
   useEffect(() => {

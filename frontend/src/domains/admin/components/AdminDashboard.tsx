@@ -3,14 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { getAdminSummary, type AdminSummary } from '../api/adminApi';
-import AdminAccess from './AdminAccess';
-import './admin.css';
 
 export default function AdminDashboard() {
-  return <AdminAccess><DashboardContent /></AdminAccess>;
-}
-
-function DashboardContent() {
   const [summary, setSummary] = useState<AdminSummary | null>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
