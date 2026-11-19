@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useEffect, useId, useRef, useState } from 'react';
 import { currentMember } from '../api/memberApi';
 import { ApiError } from '@/shared/lib/http/apiError';
-import './MemberProfileMenu.css';
+
+const profileLinkClassName = 'block hover:bg-[#f3f1ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5147ff]';
 
 type MemberStatus =
   | { kind: 'checking' | 'signed-out' | 'error' }
@@ -45,7 +46,7 @@ export default function MemberProfileMenu() {
 
   return (
     <div
-      className="member-profile"
+      className="relative"
       ref={menuRef}
       onKeyDown={event => {
         if (event.key !== 'Escape' || !isOpen) return;
@@ -56,7 +57,9 @@ export default function MemberProfileMenu() {
     >
       <button
         type="button"
-        className="member-profileButton"
+        className="grid size-11 cursor-pointer place-items-center rounded-full border border-transparent text-[#16243b]
+          hover:bg-[#f3f1ff] hover:text-[#5147ff] aria-expanded:bg-[#f3f1ff] aria-expanded:text-[#5147ff]
+          focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5147ff]"
         ref={buttonRef}
         aria-label="프로필 메뉴"
         aria-expanded={isOpen}
@@ -65,16 +68,24 @@ export default function MemberProfileMenu() {
       >
         <CircleUserRound size={22} strokeWidth={1.8} aria-hidden="true" />
       </button>
-      <div id={menuId} className="member-profilePanel" hidden={!isOpen}>
+      <div
+        id={menuId}
+        className="absolute top-full right-0 z-20 mt-2 w-[min(200px,calc(100vw_-_40px))]
+          rounded-[14px] border border-[#e4e9f1] bg-white p-1.5 text-[14px] text-[#16243b]
+          shadow-[0_12px_28px_rgb(22_36_59_/_12%)] *:rounded-lg *:px-3 *:py-2.5"
+        hidden={!isOpen}
+      >
         {memberStatus.kind === 'checking' && <p role="status">계정 상태를 확인하고 있어요.</p>}
         {memberStatus.kind === 'error' && <p role="alert">계정 정보를 확인하지 못했어요.</p>}
         {memberStatus.kind === 'signed-out' && (
-          <Link href="/login/" onClick={() => setIsOpen(false)}>로그인</Link>
+          <Link href="/login/" className={profileLinkClassName} onClick={() => setIsOpen(false)}>로그인</Link>
         )}
         {memberStatus.kind === 'signed-in' && (
           <>
-            <Link href="/account/" onClick={() => setIsOpen(false)}>마이페이지</Link>
-            {memberStatus.isAdmin && <Link href="/admin/" onClick={() => setIsOpen(false)}>관리자 화면</Link>}
+            <Link href="/account/" className={profileLinkClassName} onClick={() => setIsOpen(false)}>마이페이지</Link>
+            {memberStatus.isAdmin && (
+              <Link href="/admin/" className={profileLinkClassName} onClick={() => setIsOpen(false)}>관리자 화면</Link>
+            )}
           </>
         )}
       </div>
