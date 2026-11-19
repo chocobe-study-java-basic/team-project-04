@@ -28,8 +28,10 @@ public class PlaceSearchRepository {
         var cb = entityManager.getCriteriaBuilder();
         var query = cb.createQuery(PlaceSummaryResponse.class);
         var place = query.from(Place.class);
+        var image = place.join("representativeImage", JoinType.LEFT);
         query.select(cb.construct(PlaceSummaryResponse.class,
-                place.get("id"), place.get("name"), place.get("address"), place.get("latitude"), place.get("longitude")));
+                place.get("id"), place.get("name"), place.get("address"), place.get("latitude"), place.get("longitude"),
+                image.get("url"), image.get("attribution"), image.get("sourceUrl"), image.get("licenseType")));
         query.where(predicates(request, cb, query, place));
         var nameOrder = "name-desc".equals(request.sort()) ? cb.desc(place.get("name")) : cb.asc(place.get("name"));
         query.orderBy(nameOrder, cb.asc(place.get("id")));

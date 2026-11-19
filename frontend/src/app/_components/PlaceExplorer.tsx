@@ -7,7 +7,7 @@ import type { MouseEvent } from 'react';
 import type { PlaceSearchFilters } from './place-list.type';
 import { defaultFilters, readPlaceSearchParams, seasons, writePlaceSearchParams } from './placeSearchParams';
 import PlaceSearchForm from './PlaceSearchForm';
-import PlaceArtwork from '@/domains/place/components/PlaceArtwork';
+import PlacePhoto, { PlacePhotoCredit } from '@/domains/place/components/PlacePhoto';
 import KakaoPlaceMap from '@/domains/place/components/KakaoPlaceMap';
 import CopyPlaceLinkButton from '@/domains/place/components/CopyPlaceLinkButton';
 import type { PlaceMapBounds, PlaceMapView } from '@/domains/place/types/kakaoMap.type';
@@ -103,8 +103,11 @@ export default function PlaceExplorer() {
         <div className="outpick-headerActions">
           <span className="outpick-previewBadge">탐색 화면 미리보기</span>
           <CopyPlaceLinkButton label="검색 링크 복사" />
+          <Link className="outpick-accountLink" href="/login/">로그인</Link>
         </div>
       </header>
+
+      {searchParams.has('withdrawn') && <p className="outpick-accountNotice" role="status">회원 탈퇴가 완료되었습니다.</p>}
 
       <div className="outpick-toolbar">
         <nav aria-label="활동 카테고리" className="outpick-categories">
@@ -149,7 +152,7 @@ export default function PlaceExplorer() {
                 <li key={place.id}>
                   <article className={`outpick-placeCard ${selectedPlace?.id === place.id ? 'outpick-placeCardSelected' : ''}`}>
                     <button type="button" aria-pressed={selectedPlace?.id === place.id} className="outpick-card" onClick={() => setSelectedId(place.id)}>
-                      <PlaceArtwork artwork="forest" />
+                      <PlacePhoto place={place} />
                       <div className="outpick-cardBody">
                         <p className="outpick-location">{place.address ?? '주소 미확인'}</p>
                         <h2>{place.name}</h2>
@@ -158,6 +161,7 @@ export default function PlaceExplorer() {
                         <span className="outpick-selectHint">{selectedPlace?.id === place.id ? '선택한 장소' : '장소 선택'} <span aria-hidden="true">↗</span></span>
                       </div>
                     </button>
+                    <PlacePhotoCredit place={place} />
                     <Link className="outpick-detailLink" aria-label={`${place.name} 상세 보기`} href={getPlaceDetailUrl(place.id, listUrl)} onClick={rememberPosition}>
                       상세 보기 <span aria-hidden="true">→</span>
                     </Link>

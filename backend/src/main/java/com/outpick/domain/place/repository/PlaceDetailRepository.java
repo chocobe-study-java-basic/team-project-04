@@ -21,7 +21,7 @@ public class PlaceDetailRepository {
 
     public Optional<Place> findPublishedPlace(long placeId) {
         return entityManager.createQuery("""
-                select p from Place p where p.id = :id and p.publishStatus = :published
+                select p from Place p left join fetch p.representativeImage where p.id = :id and p.publishStatus = :published
                 """, Place.class)
                 .setParameter("id", placeId).setParameter("published", PlacePublishStatus.PUBLISHED)
                 .getResultStream().findFirst();

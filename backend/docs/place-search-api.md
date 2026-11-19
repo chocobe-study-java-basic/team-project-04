@@ -44,7 +44,7 @@ GET /api/v1/places?activityTypeIds=1&season=WINTER&environmentType=OUTDOOR&south
 }
 ```
 
-`items`의 이름·주소·좌표는 현재 저장 모델이 허용하는 NULL이 나올 수 있다. 공개 적합성 검수는 등록/공개 서비스에서 후속 구현한다. 아직 확보하지 않은 대표 사진이나 종목 표시용 필드를 임의로 추가하지 않았다.
+`items`의 이름·주소·좌표는 현재 저장 모델이 허용하는 NULL이 나올 수 있다. 공개 적합성 검수는 등록/공개 서비스에서 후속 구현한다. 대표 사진용으로 `representativeImage`, `imageAttribution`, `imageSourceUrl`, `imageLicense`를 추가했으며 사진이 없으면 모두 null이다. [대표 사진 정책](place-images.md)을 참고한다. 종목 표시용 필드는 임의로 추가하지 않았다.
 
 일치하는 장소가 없거나 마지막 페이지 이후를 조회해도 `200`과 빈 `items`를 반환한다. `totalElements`는 해당 조건의 전체 장소 수이며 빈 페이지에서도 유지한다. 입력 제약 위반은 공통 `400 application/problem+json`, `VALIDATION_FAILED`, `fieldErrors`, `requestId`로 응답한다. 변환 불가능한 숫자 등 바인딩 오류도 공통 400 응답이다.
 
