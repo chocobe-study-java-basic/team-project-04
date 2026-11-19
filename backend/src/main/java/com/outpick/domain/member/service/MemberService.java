@@ -1,6 +1,7 @@
 package com.outpick.domain.member.service;
 
 import com.outpick.domain.member.dto.SignupRequest;
+import com.outpick.domain.favorite.repository.FavoriteRepository;
 import com.outpick.domain.member.dto.SignupResponse;
 import com.outpick.domain.member.entity.Member;
 import com.outpick.domain.member.exception.MemberErrorCode;
@@ -18,12 +19,14 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final FavoriteRepository favoriteRepository;
 
     public MemberService(MemberRepository memberRepository, PasswordEncoder passwordEncoder,
-                         PasswordResetTokenRepository passwordResetTokenRepository) {
+                         PasswordResetTokenRepository passwordResetTokenRepository, FavoriteRepository favoriteRepository) {
         this.memberRepository = memberRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
+        this.favoriteRepository = favoriteRepository;
     }
 
     @Transactional
@@ -75,6 +78,7 @@ public class MemberService {
             throw new BusinessException(MemberErrorCode.WITHDRAWAL_PASSWORD_MISMATCH.getErrorCode());
         }
         passwordResetTokenRepository.deleteAllByMemberId(id);
+        favoriteRepository.deleteAllByMemberId(id);
         memberRepository.delete(member);
     }
 }

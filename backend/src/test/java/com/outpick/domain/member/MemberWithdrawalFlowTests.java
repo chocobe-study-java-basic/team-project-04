@@ -3,6 +3,10 @@ package com.outpick.domain.member;
 import com.outpick.domain.member.repository.MemberRepository;
 import com.outpick.domain.member.repository.PasswordResetTokenRepository;
 import com.outpick.domain.member.service.PasswordResetService;
+import com.outpick.domain.place.entity.Place;
+import com.outpick.domain.place.entity.PlacePublishStatus;
+import com.outpick.domain.place.entity.Region;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,11 +14,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -35,6 +41,9 @@ class MemberWithdrawalFlowTests {
     @Autowired MemberRepository members;
     @Autowired PasswordResetTokenRepository tokens;
     @Autowired PasswordResetService resetService;
+    @Autowired EntityManager entityManager;
+    @Autowired TransactionTemplate transactions;
+    @Autowired JdbcTemplate jdbc;
 
     @Test
     @DisplayName("비밀번호와 최종 확인을 거친 탈퇴가 계정·토큰·기존 세션을 정리하는지 검증한다")
@@ -45,6 +54,18 @@ class MemberWithdrawalFlowTests {
                         .content("{\"email\":\"leave@example.com\",\"password\":\"old-pass\",\"nickname\":\"tester\"}"))
                 .andExpect(status().isCreated());
         login(first);
+        long placeId = transactions.execute(transaction -> {
+            var region = Region.builder().name("탈퇴 테스트 지역").build();
+            entityManager.persist(region);
+            var place = Place.builder().region(region).name("탈퇴 테스트 장소")
+                    .publishStatus(PlacePublishStatus.PUBLISHED).build();
+            entityManager.persist(place);
+            return place.getId();
+        });
+        mvc.perform(post("/api/v1/members/me/favorites").session(first.session()).header(first.header(), first.csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"placeId\":" + placeId + "}"))
+                .andExpect(status().isCreated());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM favorite WHERE place_id = ?", Integer.class, placeId)).isEqualTo(1);
         var second = csrfSession();
         login(second);
         String token = resetService.request("leave@example.com").orElseThrow().token();
@@ -70,6 +91,7 @@ class MemberWithdrawalFlowTests {
 
         assertThat(members.findByEmail("leave@example.com")).isEmpty();
         assertThat(tokens.count()).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM favorite WHERE place_id = ?", Integer.class, placeId)).isZero();
         assertThat(resetService.isValid(token)).isFalse();
         mvc.perform(get("/api/v1/members/me").session(second.session()))
                 .andExpect(status().isUnauthorized());
