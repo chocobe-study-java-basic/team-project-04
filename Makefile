@@ -9,6 +9,11 @@ IMAGE_TAG ?= v0
 	compose-up \
 	compose-down \
 	compose-reset \
+	places-import \
+	places-list \
+	places-publish-initial \
+	places-init \
+	mysql-shell \
 	frontend-dev \
 	frontend-lint \
 	frontend-typecheck \
@@ -30,6 +35,11 @@ help:
 	@echo "make compose-up                   Start local MySQL and wait until ready"
 	@echo "make compose-down                 Stop local MySQL (keep data)"
 	@echo "make compose-reset                Delete local DB data and restart (confirmation required)"
+	@echo "make places-import                Collect initial TourAPI places into local DB as drafts"
+	@echo "make places-list                  Show imported places and publication status"
+	@echo "make places-publish-initial       Publish matching initial places with existing review SQL"
+	@echo "make places-init                  Start local DB, collect, publish and list (keep existing data)"
+	@echo "make mysql-shell                  Open local MySQL shell"
 	@echo "-------------------------------"
 	@echo "make frontend-dev                 Install dependencies if needed and start frontend"
 	@echo "make frontend-lint                Run frontend ESLint"
@@ -77,6 +87,25 @@ compose-reset:
 	if [ "$$answer" != "RESET" ]; then echo "Cancelled."; exit 1; fi; \
 	docker compose down --volumes && $(MAKE) compose-up
 
+# 기존 데이터를 유지하며 순서대로 실행합니다. 실패하면 다음 단계로 진행하지 않습니다.
+places-init:
+	$(MAKE) compose-up
+	$(MAKE) places-import
+	$(MAKE) places-publish-initial
+	$(MAKE) places-list
+
+places-import:
+	node backend/scripts/local-places.mjs import
+
+places-list:
+	node backend/scripts/local-places.mjs list
+
+places-publish-initial:
+	node backend/scripts/local-places.mjs publish-initial
+
+mysql-shell:
+	node backend/scripts/local-places.mjs shell
+
 # ---------------------------------------------------------------------------------
 #
 # frontend
@@ -112,3 +141,4 @@ frontend-docker-build:
 # Mac과 EC2용 이미지를 함께 빌드해 업로드합니다. Docker Hub 로그인이 필요합니다.
 frontend-docker-build-push:
 	node frontend/scripts/docker-build.mjs --push "$(IMAGE_TAG)"
+

@@ -1,0 +1,6 @@
+# 장소 수집용 임시 Backend 컨테이너에만 적용합니다.
+# compose.deploy.yaml 뒤에 지정하고 run 명령으로 사용합니다.
+services:
+  backend:
+    environment:
+      TOUR_API_KEY: ${TOUR_API_KEY:?Set TOUR_API_KEY in .env}
