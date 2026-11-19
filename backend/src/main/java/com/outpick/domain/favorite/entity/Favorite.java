@@ -33,4 +33,18 @@ public class Favorite {
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "is_notified", nullable = false)
+    private boolean notified;
+
+    @Column(name = "notified_enabled_at")
+    private LocalDateTime notifiedEnabledAt;
+
+    public void changeNotificationSetting(boolean enabled, LocalDateTime changedAt) {
+        if (notified == enabled) {
+            return;
+        }
+        notified = enabled;
+        notifiedEnabledAt = enabled ? changedAt : null;
+    }
 }
