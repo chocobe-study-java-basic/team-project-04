@@ -44,6 +44,10 @@ public class SecurityConfig {
                 )
                 .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint((request, response, error) ->
                         response.sendError(HttpStatus.UNAUTHORIZED.value())))
+                .logout(logout -> logout.logoutUrl("/api/v1/auth/logout")
+                        .logoutSuccessHandler((request, response, authentication) ->
+                                response.setStatus(HttpStatus.NO_CONTENT.value()))
+                        .deleteCookies("JSESSIONID"))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable);
 

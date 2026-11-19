@@ -1,7 +1,6 @@
 package com.outpick.domain.member;
 
 import com.outpick.domain.member.repository.MemberRepository;
-import com.outpick.domain.member.service.MemberService;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,10 +30,9 @@ class MemberAuthFlowTests {
 
     @Autowired MockMvc mvc;
     @Autowired MemberRepository members;
-    @Autowired MemberService memberService;
 
     @Test
-    @DisplayName("회원가입·로그인·내 정보 조회와 이전 세션 무효화를 검증한다")
+    @DisplayName("회원가입·로그인·내 정보 조회와 로그아웃을 검증한다")
     void signupLoginAndCurrentMemberUseTheSameSession() throws Exception {
         var csrfResult = mvc.perform(get("/api/v1/auth/csrf"))
                 .andExpect(status().isOk())
@@ -89,8 +87,16 @@ class MemberAuthFlowTests {
                 .andExpect(jsonPath("$.nickname").value("영빈"))
                 .andExpect(jsonPath("$.passwordHash").doesNotExist());
 
-        memberService.revokeAllSessions(members.findByEmail("test@example.com").orElseThrow().getId());
+        mvc.perform(post("/api/v1/auth/logout").session((org.springframework.mock.web.MockHttpSession) session))
+                .andExpect(status().isForbidden());
         mvc.perform(get("/api/v1/members/me").session((org.springframework.mock.web.MockHttpSession) session))
+                .andExpect(status().isOk());
+
+        mvc.perform(post("/api/v1/auth/logout").session((org.springframework.mock.web.MockHttpSession) session)
+                        .header(header, csrf))
+                .andExpect(status().isNoContent());
+        assertThat(((org.springframework.mock.web.MockHttpSession) session).isInvalid()).isTrue();
+        mvc.perform(get("/api/v1/members/me"))
                 .andExpect(status().isUnauthorized());
     }
 }
