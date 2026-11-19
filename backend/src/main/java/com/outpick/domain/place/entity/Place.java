@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -67,6 +68,15 @@ public class Place {
 
     @Column(name = "reviewed_at", columnDefinition = "DATETIME")
     private LocalDateTime reviewedAt;
+
+    @OneToOne(mappedBy = "place", fetch = FetchType.LAZY)
+    private PlaceRepresentativeImage representativeImage;
+
+    void attachRepresentativeImage(PlaceRepresentativeImage image) {
+        if (representativeImage != null && representativeImage != image)
+            throw new IllegalStateException("이미 등록된 대표 사진이 있습니다.");
+        this.representativeImage = image;
+    }
 
     @Builder
     public Place(

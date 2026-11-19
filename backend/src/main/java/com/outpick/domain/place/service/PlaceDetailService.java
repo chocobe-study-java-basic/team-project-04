@@ -32,9 +32,12 @@ public class PlaceDetailService {
         var activityResponses = activities.stream().map(activity -> new PlaceActivityResponse(
                 activity.getId(), activity.getActivityType().getId(), activity.getActivityType().getName(),
                 activity.getEnvironmentType(), seasons.getOrDefault(activity.getId(), List.of()))).toList();
+        var image = place.getRepresentativeImage();
         return new PlaceDetailResponse(place.getId(), place.getName(), place.getNameAlias(), place.getIntroduce(),
                 place.getAddress(), place.getLatitude(), place.getLongitude(), place.getHomepage(), place.getOperationStatus(),
-                place.getReviewedAt(), null, activityResponses,
+                place.getReviewedAt(), image == null ? null : image.getUrl(),
+                image == null ? null : image.getAttribution(), image == null ? null : image.getSourceUrl(),
+                image == null ? null : image.getLicenseType(), activityResponses,
                 repository.findActiveNotices(placeId, LocalDateTime.now(placeClock)), repository.findVerifiedSources(placeId));
     }
 }

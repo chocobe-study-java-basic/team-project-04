@@ -7,6 +7,7 @@ import java.util.List;
 public record PlaceDetailResponse(Long id, String name, String nameAlias, String description, String address,
                                    BigDecimal latitude, BigDecimal longitude, String homepage, String operationStatus,
                                    LocalDateTime reviewedAt, String representativeImage,
+                                   String imageAttribution, String imageSourceUrl, String imageLicense,
                                    List<PlaceActivityResponse> activities, List<PlaceNoticeResponse> notices,
                                    List<PlaceSourceResponse> sources) {
     public PlaceDetailResponse {
