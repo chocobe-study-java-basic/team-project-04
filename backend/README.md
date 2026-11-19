@@ -4,9 +4,17 @@
 
 MySQL과 Spring Boot 실행 절차는 [프로젝트 README](../README.md)를 참고하세요.
 
+## 로컬 운영자 계정 초기화
+
+`local` 프로필로 Backend를 실행하면 DB에 운영자가 없을 때 `admin@example.com` 계정이 생성됩니다. 초기 비밀번호는 구두로 공유했으며 DB에는 해시로 저장합니다. IntelliJ와 터미널에서 기존 개발 서버 실행 절차를 그대로 사용한 뒤, 기존 로그인 화면에서 접속합니다.
+
+이미 운영자가 있으면 생성을 건너뜁니다. 같은 이메일의 일반 회원이 있으면 기존 계정을 보존하고 서버 로그에 충돌을 기록합니다. `prod`가 활성화되면 `local`을 함께 지정해도 초기화가 실행되지 않습니다.
+
+현재 배포용 Compose도 `local`을 사용하므로 운영자가 없는 테스트용 배포 DB에도 같은 계정이 생성됩니다. 외부 공개 전에는 배포 프로필을 전환하고, 기존 테스트 계정의 비밀번호도 변경하거나 계정을 제거합니다.
+
 ## Docker로 Backend 실행
 
-`compose.yaml`은 개발용 MySQL만 실행합니다. Backend는 IntelliJ에서 실행하며 기존 개발 방법을 유지합니다. `compose.deploy.yaml`은 MySQL·Backend·Nginx를 함께 컨테이너로 실행합니다. 다음 로컬 실행 명령은 프로젝트 루트에서 실행합니다. EC2 적용은 아래의 Nginx 안내에서 별도로 설명합니다.
+`compose.yaml`은 개발용 MySQL만 실행합니다. Backend는 IntelliJ에서 실행하며 기존 개발 방법을 유지합니다. `compose.deploy.yaml`은 MySQL·Backend·Nginx를 함께 컨테이너로 실행합니다. 다음 로컬 실행 명령은 프로젝트 루트에서 실행합니다. EC2 적용은 [배포 통합 안내](../infra/deploy.md)를 따릅니다.
 
 ### 이미지 만들기
 
@@ -110,79 +118,21 @@ Mac의 Apple Silicon은 ARM64이고 현재 EC2의 t3.small은 AMD64입니다. �
 
 ## Nginx로 외부 API 접속하기
 
-이번 결과물은 내 Mac의 브라우저에서 `http://EC2_PUBLIC_IP/api/v1/examples/1`로 접속해 예시 JSON을 확인하는 것입니다. `EC2_PUBLIC_IP`는 실제 EC2의 EIP로 바꿉니다.
+Nginx는 화면 파일을 응답하고 API 요청을 Backend로 전달합니다. 새 EC2 배포와 기존 서버 업데이트는 [배포 통합 안내](../infra/deploy.md)를 따릅니다.
 
 ```text
-브라우저 → EC2의 80번 포트 → Nginx → backend:8080 → Spring Boot
+브라우저 → HTTPS 도메인의 Nginx → backend:8080 → Spring Boot
 ```
 
 `nginx/default.conf`는 `/api/` 경로만 Backend에 전달합니다. `proxy_pass`에 경로를 덧붙이지 않아 `/api/v1/...`를 그대로 유지합니다. 화면 요청에는 이미지의 Frontend 파일을 제공하고, 없는 파일은 404를 반환합니다. Swagger·Actuator는 외부로 전달하지 않습니다. EC2 내부의 기존 `localhost:18080/actuator/health`는 계속 사용할 수 있습니다.
 
 `backend`는 같은 Docker 네트워크의 서비스 이름입니다. `upstream`은 요청을 전달할 서버 설정이고, `resolver 127.0.0.11`은 Docker 내부 DNS를 사용한다는 뜻입니다. `resolve`와 공유 영역인 `zone`을 함께 사용해 Backend 교체 후 바뀐 IP를 다시 조회합니다. Backend가 교체되는 동안이나 시작 중에는 일시적으로 502가 나올 수 있습니다.
 
-### 내 Mac에서 준비하기
+### 서버 설정과 오류 확인
 
-먼저 [HTTP 보안 그룹 적용 안내](../infra/README.md#nginx-외부-http-접속-허용하기)에 따라 Terraform 계획을 확인하고 HTTP 80번을 허용합니다. EC2 교체나 전체 삭제는 이 작업에 필요하지 않습니다.
-
-프로젝트 루트에서 다음 명령으로 EC2에 Nginx 디렉터리를 만듭니다. `/개인키/경로.pem`과 `EC2_PUBLIC_IP`는 실제 값으로 바꿉니다.
-
-```bash
-ssh -i /개인키/경로.pem ubuntu@EC2_PUBLIC_IP 'mkdir -p ~/outpick/nginx'
-scp -i /개인키/경로.pem ./compose.deploy.yaml ubuntu@EC2_PUBLIC_IP:~/outpick/
-scp -i /개인키/경로.pem ./nginx/default.conf ubuntu@EC2_PUBLIC_IP:~/outpick/nginx/
-```
-
-`ssh`는 서버에서 디렉터리 생성 명령을 실행하고, `scp`는 파일을 복사합니다. `-i`는 SSH 개인 키 경로입니다. 목적지의 `:`는 원격 서버 경로를 뜻하므로 생략하지 않습니다. EC2에 작성한 `.env`는 그대로 사용합니다.
-
-### EC2에서 실행하기
-
-다음 명령은 EC2에 SSH로 접속한 터미널에서 순서대로 실행합니다. 각 명령이 오류 없이 끝난 뒤 다음 명령으로 넘어갑니다.
-
-```bash
-cd ~/outpick
-docker compose -f compose.deploy.yaml config --quiet
-docker compose -f compose.deploy.yaml pull nginx
-docker compose -f compose.deploy.yaml run --rm --no-deps nginx nginx -t
-docker compose -f compose.deploy.yaml up -d --wait
-```
-
-- `-f`는 사용할 Compose 파일을 지정합니다.
-- `config --quiet`는 최종 설정을 출력하지 않고 검사합니다.
-- `pull nginx`는 Nginx 이미지를 내려받습니다.
-- `run --rm --no-deps nginx nginx -t`는 Nginx 서비스를 바탕으로 임시 컨테이너를 만들고 설정 문법을 검사합니다. `--rm`은 검사 후 컨테이너를 지우고, `--no-deps`는 다른 서비스를 함께 시작하지 않습니다. `syntax is ok`와 `test is successful`을 확인합니다.
-- `up -d --wait`는 서비스를 백그라운드에서 실행하고 실행 상태를 확인합니다. Backend 앱의 준비 완료는 아래 HTTP 요청으로 확인합니다.
-
-```bash
-curl -i -w '\n' http://localhost/api/v1/examples/1
-```
-
-`curl`은 HTTP 요청을 보내고, `-i`는 상태 코드와 헤더도 보여줍니다. `-w '\n'`은 출력 끝에 줄바꿈을 추가합니다. HTTP 200과 `{"name":"예시 액티비티","participantCount":3}`이 나오면 Nginx의 내부 전달이 정상입니다.
-
-그다음 내 Mac의 브라우저에서 `http://EC2_PUBLIC_IP/api/v1/examples/1`을 엽니다. 반드시 `http://`로 접속합니다. 아직 HTTPS와 도메인은 연결하지 않았습니다. 같은 JSON 응답이 나오면 외부 접속까지 완료입니다.
-
-### 설정 변경과 오류 확인
-
-Nginx 설정 파일만 수정했다면 EC2에 다시 복사한 후 설정 검사와 재적용을 실행합니다.
-
-```bash
-docker compose -f compose.deploy.yaml exec nginx nginx -t
-docker compose -f compose.deploy.yaml exec nginx nginx -s reload
-```
-
-`exec`는 실행 중인 컨테이너 안에서 명령을 실행합니다. `nginx -t`가 성공한 경우에만 `nginx -s reload`로 새 설정을 적용합니다. Compose의 포트나 볼륨 설정을 변경했다면 `up -d --wait`로 반영합니다.
-
-EC2 내부 요청도 실패하면 다음 로그를 확인합니다.
-
-```bash
-docker compose -f compose.deploy.yaml ps
-docker compose -f compose.deploy.yaml logs --tail 100 nginx backend
-```
-
-EC2 내부에서는 정상인데 내 Mac에서 접속이 안 되면 EIP와 보안 그룹의 TCP 80번 허용을 확인합니다. 이 단계에서는 EC2의 앱 8080번·18080번이나 DB 3306번을 외부에 열지 않습니다.
+EC2 파일 업로드, HTTPS 실행, 설정 재적용과 로그 확인은 [배포 통합 안내](../infra/deploy.md)에 모아 둡니다. 앱 8080번·18080번과 MySQL 3306번은 외부에 열지 않습니다. HTTP 설정은 `nginx/default.conf`, HTTPS 설정은 `nginx/https.conf`에서 관리합니다.
 
 참고: [Nginx proxy_pass](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_pass), [Nginx upstream 주소 갱신](https://nginx.org/en/docs/http/ngx_http_upstream_module.html#resolve).
-
-Frontend 추가 전 로컬 Nginx 1.30.6에서 설정 검사, GET·POST 전달과 Backend의 404 응답을 확인했습니다. 당시 `/`, `/actuator/health`, `/swagger-ui.html`은 404를 반환했습니다. Backend를 다른 내부 IP로 교체한 뒤에도 Nginx 재시작 없이 HTTP 200 응답이 복구됐습니다. 이후 사용자가 EC2에서 외부 브라우저의 예시 API 응답을 확인했고, 2026-11-17 인프라 재생성부터 외부 요청까지 다시 확인했습니다. Frontend 추가 후의 검증 범위는 [Frontend 배포 안내](../frontend/docs/deployment.md#이번-로컬-검증-결과)에 기록합니다.
 
 ## 장소 저장 모델
 

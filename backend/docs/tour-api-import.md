@@ -1,5 +1,7 @@
 # TourAPI 초기 장소 수집
 
+EC2에서 배포된 이미지와 서버 `.env`를 사용하려면 [EC2 초기 장소 데이터 반영 안내](ec2-initial-places.md)를 따른다.
+
 ## 실행 범위
 
 전국 후보 목록의 데이터 확보 가능성을 확인하기 위한 첫 5곳만 수집한다. 전국 전체를 자동 수집하거나 검색 첫 결과를 채택하지 않는다.
@@ -13,6 +15,36 @@
 | 2623831 | 플라이스테이션 | 실내 스카이다이빙 |
 
 이 연결은 검수 전 후보 정보다. 실내외·시즌·현재 운영 상태는 응답이나 종목명으로 추정해 넣지 않는다. 추가 후보는 `TourImportTarget.initialFive()`의 명시적 목록을 검토해 확장한다.
+
+## Make로 로컬 초기 장소 준비
+
+프로젝트 루트 `.env`에 기존 MySQL 설정과 `TOUR_API_KEY=일반 인증키(Decoding)`를 저장한다. 키와 비밀번호를 Git에 올리지 않는다. Docker Desktop, Java 25, `node:util`의 `parseEnv`를 지원하는 Node.js, Make가 필요하다.
+
+프로젝트 루트에서 실행한다.
+
+```bash
+make places-init
+```
+
+MySQL 준비가 완료될 때까지 기다리고, 현재 Backend 소스로 장소를 수집한다. 이어서 기존 `review-initial-tour-places.sql`로 조건에 맞는 초기 장소를 공개하고 결과를 조회한다. 중간 명령이 실패하면 다음 단계는 실행하지 않는다. 앞 단계에서 저장한 데이터는 유지되므로 실패 원인을 해결한 뒤 다시 실행한다.
+
+이 명령은 DB를 삭제하지 않는다. 이미 수집한 장소는 `SKIPPED`로 처리하고, 공개 SQL은 이미 공개했거나 수정한 장소를 건너뛴다. 공개 조건에 맞지 않는 장소는 DRAFT로 남을 수 있으므로 마지막 조회의 `publish_status`를 확인한다. `0`은 DRAFT, `1`은 공개 상태다.
+
+단계별로 실행할 때는 다음 명령을 사용한다.
+
+| 명령 | 실행 내용 |
+| --- | --- |
+| `make compose-up` | 로컬 MySQL 실행 및 준비 완료 대기 |
+| `make places-import` | 초기 5곳 수집, 공개 전 상태로 저장 |
+| `make places-list` | 수집한 장소와 공개 상태 조회 |
+| `make places-publish-initial` | 기존 검수 SQL로 조건에 맞는 초기 장소 공개 |
+| `make mysql-shell` | 로컬 MySQL에 접속, `exit`으로 종료 |
+
+수집 명령은 `.env`에서 필요한 값을 읽어 Gradle `importTourPlaces`에 전달한다. Docker 이미지를 다시 빌드할 필요가 없다. 수집 대상 DB는 `127.0.0.1`과 `.env`의 `MYSQL_PORT`이며, 포트를 생략하면 `3306`이다. `.env`의 `MYSQL_HOST`는 이 명령에서 사용하지 않는다. 조회·공개·MySQL 접속은 개발용 `compose.yaml`의 MySQL을 사용한다. 개별 명령을 실행하기 전에는 `make compose-up`으로 MySQL을 준비한다.
+
+`places-init`은 아래에 기록한 초기 5곳의 로컬 검수 SQL만 사용한다. 후속 필터·이미지 SQL은 실행하지 않는다. 새로 추가한 수집 대상을 자동 공개하거나 EC2 DB에 반영하는 명령이 아니다.
+
+Backend와 Frontend 개발 서버는 평소처럼 별도로 실행한다. 공개 후 로컬 브라우저에서 장소 목록을 새로 조회해 표시 여부를 확인한다.
 
 ## 로컬 실행 (PowerShell)
 

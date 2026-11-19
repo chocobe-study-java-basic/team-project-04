@@ -9,6 +9,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -30,9 +34,10 @@ class MemberAuthFlowTests {
 
     @Autowired MockMvc mvc;
     @Autowired MemberRepository members;
+    @Autowired JdbcTemplate jdbc;
 
     @Test
-    @DisplayName("회원가입·로그인·내 정보 조회와 로그아웃을 검증한다")
+    @DisplayName("일반 회원의 DB 역할과 회원가입·로그인·내 정보 조회·로그아웃을 검증한다")
     void signupLoginAndCurrentMemberUseTheSameSession() throws Exception {
         var csrfResult = mvc.perform(get("/api/v1/auth/csrf"))
                 .andExpect(status().isOk())
@@ -45,11 +50,21 @@ class MemberAuthFlowTests {
 
         mvc.perform(post("/api/v1/auth/signup").session((org.springframework.mock.web.MockHttpSession) session)
                         .header(header, csrf).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"short@example.com\",\"password\":\"short\",\"nickname\":\"테스트\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        assertThat(members.findByEmail("short@example.com")).isEmpty();
+
+        mvc.perform(post("/api/v1/auth/signup").session((org.springframework.mock.web.MockHttpSession) session)
+                        .header(header, csrf).contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"email":"TEST@EXAMPLE.COM","password":"password123","nickname":"영빈"}
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.email").value("test@example.com"));
+
+        assertThat(jdbc.queryForObject("SELECT role FROM `user` WHERE email = ?", String.class, "test@example.com"))
+                .isEqualTo("USER");
 
         mvc.perform(post("/api/v1/auth/signup").session((org.springframework.mock.web.MockHttpSession) session)
                         .header(header, csrf).contentType(MediaType.APPLICATION_JSON)
@@ -80,6 +95,12 @@ class MemberAuthFlowTests {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("test@example.com"));
+
+        var securityContext = (SecurityContext) session.getAttribute(
+                HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+        assertThat(securityContext.getAuthentication().getAuthorities())
+                .extracting(GrantedAuthority::getAuthority)
+                .containsExactly("ROLE_USER");
 
         mvc.perform(get("/api/v1/members/me").session((org.springframework.mock.web.MockHttpSession) session))
                 .andExpect(status().isOk())

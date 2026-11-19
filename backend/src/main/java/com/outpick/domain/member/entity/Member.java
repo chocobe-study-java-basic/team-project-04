@@ -2,6 +2,8 @@ package com.outpick.domain.member.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -10,6 +12,8 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.Getter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "user")
@@ -30,8 +34,10 @@ public class Member {
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(nullable = false, length = 20)
-    private String role = "USER";
+    private MemberRole role = MemberRole.USER;
 
     @Column(nullable = false, length = 20)
     private String status = "ACTIVE";
@@ -52,6 +58,12 @@ public class Member {
         this.email = email;
         this.nickname = nickname;
         this.passwordHash = passwordHash;
+    }
+
+    public static Member createAdmin(String email, String nickname, String passwordHash) {
+        Member member = new Member(email, nickname, passwordHash);
+        member.role = MemberRole.ADMIN;
+        return member;
     }
 
     @PrePersist

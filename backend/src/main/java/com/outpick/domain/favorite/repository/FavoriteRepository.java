@@ -45,4 +45,8 @@ public interface FavoriteRepository extends Repository<Favorite, Long> {
     @Modifying
     @Query("delete from Favorite favorite where favorite.memberId = :memberId and favorite.place.id = :placeId")
     void deleteForMember(@Param("memberId") Long memberId, @Param("placeId") long placeId);
+
+    @Modifying
+    @Query("delete from Favorite favorite where favorite.memberId = :memberId")
+    void deleteAllByMemberId(@Param("memberId") Long memberId);
 }

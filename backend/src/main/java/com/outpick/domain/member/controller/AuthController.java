@@ -56,7 +56,7 @@ public class AuthController {
         }
         var authentication = new UsernamePasswordAuthenticationToken(
                 new MemberSessionPrincipal(member.getId(), member.getAuthVersion()), null,
-                List.of(new SimpleGrantedAuthority("ROLE_USER")));
+                List.of(new SimpleGrantedAuthority("ROLE_" + member.getRole().name())));
         var context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);

@@ -13,7 +13,11 @@ const body={id:1,name:'DB 장소',nameAlias:null,description:'DB에 저장된 �
   notices:[{placeNoticeId:30,title:'확인된 공지',content:'공지 본문',sourceRecordId:40}],
   sources:[{sourceRecordId:40,url:'https://example.com/source',verifiedFields:'주소',verifiedAt:'2026-11-13T12:00:00'}]};
 const mount=()=>render(<QueryProvider><PlaceDetail /></QueryProvider>);
-beforeEach(()=>{window.history.replaceState(null,'','/places/detail/?id=1'); server.use(http.get(base+'/1',()=>HttpResponse.json(body)));});
+beforeEach(()=>{window.history.replaceState(null,'','/places/detail/?id=1'); server.use(
+  http.get(base+'/1',()=>HttpResponse.json(body)),
+  http.get(base+'/1/reviews',()=>HttpResponse.json([{id:5,placeId:1,authorId:7,authorNickname:'방문자',body:'이 장소에서 즐거웠어요',createdAt:'2026-11-19T10:00:00',updatedAt:'2026-11-19T10:00:00'}])),
+  http.get('https://api.outpick.test/api/v1/members/me',()=>new HttpResponse(null,{status:401}))
+);});
 describe('DB 장소 상세 화면',()=>{
   it('서버의 종목·공지·출처와 주소를 표시한다',async()=>{
     mount(); expect(await screen.findByRole('heading',{level:1,name:'DB 장소'})).toBeTruthy();
@@ -22,6 +26,8 @@ describe('DB 장소 상세 화면',()=>{
     expect(screen.getByRole('link',{name:'출처 안내 열기 ↗'}).getAttribute('href')).toBe('https://example.com/source');
     expect(screen.getByText('2026-11-13 12:00:00')).toBeTruthy();
     expect(screen.getByRole('link',{name:'카카오맵 길찾기 ↗'}).getAttribute('href')).toContain('37.37,128.39');
+    expect(await screen.findByRole('heading',{name:'이 장소의 후기'})).toBeTruthy();
+    expect(await screen.findByText('이 장소에서 즐거웠어요')).toBeTruthy();
   });
   it('목록의 지도·필터 복귀 주소를 유지한다',async()=>{
     window.history.replaceState(null,'','/places/detail/?'+new URLSearchParams({id:'1',returnTo:'/?region=강원&lat=37&lng=128&level=8'}));
