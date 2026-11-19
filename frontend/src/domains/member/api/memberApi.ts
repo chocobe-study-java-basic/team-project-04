@@ -1,6 +1,6 @@
 import { apiClient } from '@/shared/lib/http/apiClient';
 
-export type Member = { id: number; email: string; nickname: string };
+export type Member = { id: number; email: string; nickname: string; role?: string };
 export type SignupInput = { email: string; password: string; nickname: string };
 export type LoginInput = { email: string; password: string };
 export type ResetConfirmInput = { token: string; newPassword: string; newPasswordConfirmation: string };

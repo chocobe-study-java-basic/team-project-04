@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 import lombok.Getter;
 
 @Entity
-@Table(name = "place_review")
+@Table(name = "review")
 @Getter
 public class PlaceReview {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -15,9 +15,10 @@ public class PlaceReview {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "place_id") private Place place;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "author_id") private Member author;
-    @Column(nullable = false, length = 2000) private String body;
-    @Column(nullable = false, length = 20) private String status = "PUBLIC";
+    @JoinColumn(name = "user_id") private Member author;
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT") private String body;
+    @Column(name = "publish_status", nullable = false) private byte publishStatus = 1;
+    @Version @Column(nullable = false) private int version;
     @Column(name = "created_at", nullable = false) private LocalDateTime createdAt;
     @Column(name = "updated_at", nullable = false) private LocalDateTime updatedAt;
 
@@ -30,5 +31,5 @@ public class PlaceReview {
     @PrePersist void created() { createdAt = LocalDateTime.now(); updatedAt = createdAt; }
     @PreUpdate void updated() { updatedAt = LocalDateTime.now(); }
     public void changeBody(String body) { this.body = body; }
-    public void hide() { this.status = "HIDDEN"; }
+    public void hide() { this.publishStatus = 2; }
 }
