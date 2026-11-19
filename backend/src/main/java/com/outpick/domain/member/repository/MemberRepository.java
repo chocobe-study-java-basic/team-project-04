@@ -1,6 +1,7 @@
 package com.outpick.domain.member.repository;
 
 import com.outpick.domain.member.entity.Member;
+import com.outpick.domain.member.entity.MemberRole;
 import java.util.Optional;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,6 +12,8 @@ import org.springframework.data.repository.query.Param;
 public interface MemberRepository extends JpaRepository<Member, Long> {
 
     boolean existsByEmail(String email);
+
+    boolean existsByRole(MemberRole role);
 
     Optional<Member> findByEmail(String email);
 
