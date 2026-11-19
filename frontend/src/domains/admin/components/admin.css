@@ -3,7 +3,7 @@
 .admin-header p { color: #5a4cff; font-size: 11px; font-weight: 800; letter-spacing: .18em; }
 .admin-header h1 { margin: 12px 0; font-size: clamp(32px, 5vw, 52px); letter-spacing: -.05em; }
 .admin-header span { color: #667489; line-height: 1.6; }
-.admin-header a, .admin-back { color: #5146d9; font-size: 14px; font-weight: 700; white-space: nowrap; }
+.admin-back { color: #5146d9; font-size: 14px; font-weight: 700; white-space: nowrap; }
 .admin-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
 .admin-stats div, .admin-actions a, .admin-placeForm, .admin-placeList { border: 1px solid #e4e8f0; border-radius: 18px; background: #fff; box-shadow: 0 12px 32px #1a284008; }
 .admin-stats div { display: flex; flex-direction: column; gap: 12px; padding: 24px; }
@@ -36,18 +36,11 @@
 .admin-status { padding: 4px 8px; border-radius: 20px; background: #f0efff; color: #5147d9; font-size: 11px; }
 .admin-status-published { background: #e8f7ef; color: #267454; }
 .admin-access { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 12px; }
-@media (max-width: 720px) { .admin-shell { padding: 32px 18px 70px; } .admin-header { flex-direction: column; } .admin-stats, .admin-actions, .admin-placeLayout { grid-template-columns: 1fr; } }
+@media (max-width: 1023px) { .admin-placeLayout { grid-template-columns: 1fr; } }
+@media (max-width: 720px) { .admin-shell { padding: 32px 18px 70px; } .admin-header { flex-direction: column; } .admin-stats, .admin-actions { grid-template-columns: 1fr; } }
 
 /* 운영 현황은 등록 폼과 분리된 콘솔 화면으로 구성한다. */
-.admin-dashboard{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100vh;background:#f5f7fb;color:#17223a}
-.admin-dashboardRail{display:flex;flex-direction:column;min-height:100vh;padding:30px 18px;background:#151d36;color:#fff}
-.admin-dashboardBrand{display:flex;align-items:baseline;gap:9px;padding:4px 12px 36px;color:#fff;font-size:21px;font-weight:900;letter-spacing:-.06em;text-decoration:none}
-.admin-dashboardBrand span{font-size:11px;font-weight:650;letter-spacing:0;color:#a9b2cd}
-.admin-dashboardRailTitle{padding:0 13px 12px;color:#7483ab;font-size:10px;font-weight:850;letter-spacing:.15em}
-.admin-dashboardRail nav{display:grid;gap:5px}.admin-dashboardRail nav a{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 13px;border-radius:10px;color:#b7c2dc;font-size:13px;font-weight:700;text-decoration:none}
-.admin-dashboardRail nav a:hover,.admin-dashboardRail nav a.is-current{background:#323e62;color:#fff}.admin-dashboardRail nav a span{width:17px;font-size:19px;text-align:center}
-.admin-dashboardRailFoot{display:grid;gap:8px;margin-top:auto;padding:16px 12px 0;border-top:1px solid #333e5a}.admin-dashboardRailFoot span{color:#7e8aaa;font-size:10px;font-weight:800;letter-spacing:.13em}.admin-dashboardRailFoot a{color:#c3ccef;font-size:12px;text-decoration:none}
-.admin-dashboardMain{min-width:0;padding:0 clamp(25px,5vw,72px) 80px}.admin-dashboardTop{display:flex;align-items:center;justify-content:space-between;gap:12px;height:74px;color:#8290a5;font-size:12px}.admin-dashboardTop a{color:#4c52a2;font-weight:700;text-decoration:none}
+.admin-dashboard{color:#17223a}
 .admin-dashboardHero{position:relative;display:flex;justify-content:space-between;min-height:210px;overflow:hidden;padding:39px 44px;border-radius:19px;background:linear-gradient(115deg,#292e68,#5458ab);color:#fff}
 .admin-dashboardHero p{margin:0 0 24px;color:#c2c7ff;font-size:10px;font-weight:850;letter-spacing:.18em}.admin-dashboardHero h1{margin:0 0 12px;font-size:clamp(28px,3vw,41px);letter-spacing:-.055em}.admin-dashboardHero span{font-size:13px;color:#d8dbfa}
 .admin-dashboardHeroArt{position:absolute;right:0;bottom:-130px;width:350px;height:350px;border:1px solid #ffffff43;border-radius:50%;box-shadow:0 0 0 50px #ffffff0e,0 0 0 105px #ffffff0a}
@@ -56,6 +49,6 @@
 .admin-dashboardSectionTitle{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:14px}.admin-dashboardSectionTitle p{margin:0 0 8px;color:#6161bd;font-size:10px;font-weight:850;letter-spacing:.15em}.admin-dashboardSectionTitle h2{margin:0;font-size:22px;letter-spacing:-.04em}.admin-dashboardSectionTitle>span{color:#8b97a8;font-size:12px}
 .admin-dashboardWork{max-width:1000px}.admin-dashboardTask{display:flex;align-items:center;gap:17px;min-height:92px;margin-top:10px;padding:14px 19px;border:1px solid #e4e9f2;border-radius:15px;background:#fff;color:inherit;text-decoration:none;transition:border-color .2s,transform .2s,box-shadow .2s}
 .admin-dashboardTask:hover{transform:translateY(-2px);border-color:#a9ade7;box-shadow:0 12px 24px #1824500b}.admin-dashboardTaskIcon{display:grid;place-items:center;flex:0 0 45px;height:45px;border-radius:12px;font-size:21px;font-weight:800}.admin-dashboardTaskIcon.is-report{background:#fff0e8;color:#d5693d}.admin-dashboardTaskIcon.is-place{background:#eaf8f3;color:#339c79}.admin-dashboardTask>span:nth-child(2){display:grid;gap:5px;min-width:0}.admin-dashboardTask strong{font-size:15px}.admin-dashboardTask small{color:#77849b;font-size:12px;line-height:1.5}.admin-dashboardTask em{display:flex;align-items:center;gap:10px;margin-left:auto;color:#5555a8;font-size:12px;font-style:normal;font-weight:750;white-space:nowrap}.admin-dashboardTask em b{font-size:18px}
-@media(max-width:760px){.admin-dashboard{grid-template-columns:1fr}.admin-dashboardRail{min-height:auto;padding:16px}.admin-dashboardBrand{padding:0 2px 14px}.admin-dashboardRailTitle,.admin-dashboardRailFoot{display:none}.admin-dashboardRail nav{display:flex;overflow:auto}.admin-dashboardRail nav a{white-space:nowrap}.admin-dashboardMain{padding:0 18px 50px}.admin-dashboardTop{height:55px}.admin-dashboardHero{min-height:180px;padding:30px 25px}.admin-dashboardHeroArt{opacity:.45}.admin-dashboardStats{gap:8px;margin-bottom:28px}.admin-dashboardStats>div{padding:14px}.admin-dashboardStats strong{font-size:25px}.admin-dashboardSectionTitle>span{display:none}.admin-dashboardTask{gap:10px;padding:12px}.admin-dashboardTask em{font-size:0}.admin-dashboardTask em b{font-size:18px}}
+@media(max-width:760px){.admin-dashboardHero{min-height:180px;padding:30px 25px}.admin-dashboardHeroArt{opacity:.45}.admin-dashboardStats{gap:8px;margin-bottom:28px}.admin-dashboardStats>div{padding:14px}.admin-dashboardStats strong{font-size:25px}.admin-dashboardSectionTitle>span{display:none}.admin-dashboardTask{gap:10px;padding:12px}.admin-dashboardTask em{font-size:0}.admin-dashboardTask em b{font-size:18px}}
 @media(max-width:390px){.admin-dashboardStats{grid-template-columns:1fr 1fr}.admin-dashboardStats>div:last-child{grid-column:span 2}}
 @media(prefers-reduced-motion:reduce){.admin-dashboardTask,.account-admin-entry{transition:none}}
