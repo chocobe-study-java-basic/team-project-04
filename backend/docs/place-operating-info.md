@@ -16,7 +16,7 @@ powershell -ExecutionPolicy Bypass -File ./backend/scripts/import-tourapi.ps1 -T
 
 플라이스테이션의 외부 콘텐츠 ID `2623831`만 호출한다. 외부 HTTP는 DB 트랜잭션·잠금 밖에서 실행한다. 기존 전송 계층의 공식 호스트 제한·리다이렉트 금지·타임아웃·응답 크기 제한·키가 포함된 예외 제거 정책을 재사용한다. 제공기관 성공 코드와 항목의 콘텐츠 ID·유형(28)을 확인하고 HTML을 일반 텍스트로 변환한다. 빈 항목은 null이며 세 항목이 모두 비었거나 길이 제한을 넘는 응답은 저장하지 않는다. 서버 시작과 CI에서는 외부 API를 호출하지 않는다.
 
-V6는 `place_operating_info`를 추가한다. 장소 PK/FK와 TourAPI 수집 이력 FK로 최초 수집 장소에 연결하고, 수집 값과 수집일을 저장한다. HTTP 실패는 기존 데이터를 변경하지 않고, DB 저장 실패는 해당 트랜잭션을 롤백한다. 초기 수집은 UNVERIFIED이며 `verified_at`은 null이다. 기존 V1~V5와 후기·관리자 API는 수정하지 않는다. 팀 ERD에 이 추가 테이블을 반영해야 한다.
+V10은 `place_operating_info`를 추가한다. 장소 PK/FK와 TourAPI 수집 이력 FK로 최초 수집 장소에 연결하고, 수집 값과 수집일을 저장한다. HTTP 실패는 기존 데이터를 변경하지 않고, DB 저장 실패는 해당 트랜잭션을 롤백한다. 초기 수집은 UNVERIFIED이며 `verified_at`은 null이다. 기존 장소·사진 마이그레이션과 후기·관리자 API는 수정하지 않는다. 팀 ERD에 이 추가 테이블을 반영해야 한다.
 
 ## 상세 API와 화면
 
