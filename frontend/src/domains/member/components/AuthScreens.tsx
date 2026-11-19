@@ -28,7 +28,8 @@ function Submit({ busy, success = false, children }: { busy: boolean; success?: 
 export function LoginScreen() {
   const router = useRouter();
   const loginParams = useSearchParams();
-  const destination = loginParams.get('next') === '/account/' ? '/account/' : '/';
+  const destination = loginParams.get('next') === '/account/' ? '/account/'
+    : loginParams.get('next') === '/admin/' ? '/admin/' : '/';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -38,7 +39,8 @@ export function LoginScreen() {
     : loginParams.has('signup') ? '회원가입이 완료되었습니다. 로그인해 주세요.' : '';
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError('');
-    try { await login({ email, password }); setSuccess(true); window.setTimeout(() => router.push(destination), 420); }
+    try { const member = await login({ email, password }); setSuccess(true);
+      window.setTimeout(() => router.push(member.role === 'ADMIN' ? '/admin/' : destination), 420); }
     catch (cause) { setError(errorText(cause)); }
     finally { setBusy(false); }
   }

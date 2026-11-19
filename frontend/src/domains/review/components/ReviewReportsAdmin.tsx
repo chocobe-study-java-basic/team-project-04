@@ -35,7 +35,7 @@ export default function ReviewReportsAdmin() {
   }
 
   return <main className="outpick-reviewAdmin">
-    <Link href="/">← 장소 탐색으로</Link>
+    <Link href="/admin/">← 운영 대시보드</Link>
     <p className="outpick-reviewAdminKicker">OUTPICK · MODERATION</p>
     <h1>후기 신고 검토</h1>
     <p>접수된 사유와 후기 본문을 확인한 뒤 숨기거나 신고를 반려할 수 있습니다.</p>
