@@ -20,10 +20,10 @@ class FavoriteNotificationMigrationTests {
     static MySQLContainer mysql = new MySQLContainer("mysql:8.4.13");
 
     @Test
-    @DisplayName("V11은 V10의 관심 장소와 소유권 제약을 유지하며 기본값을 OFF로 적용한다")
+    @DisplayName("V14는 V13의 관심 장소와 소유권 제약을 유지하며 기본값을 OFF로 적용한다")
     void upgradesExistingFavoriteWithNotificationsOff() throws SQLException {
         Flyway.configure().dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
-                .target("10").load().migrate();
+                .target("13").load().migrate();
 
         try (var connection = DriverManager.getConnection(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
              var statement = connection.createStatement()) {
@@ -42,7 +42,7 @@ class FavoriteNotificationMigrationTests {
         var flyway = Flyway.configure().dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword()).load();
         assertThat(flyway.migrate().migrationsExecuted).isEqualTo(1);
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("11");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("14");
 
         try (var connection = DriverManager.getConnection(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
              var statement = connection.createStatement()) {
