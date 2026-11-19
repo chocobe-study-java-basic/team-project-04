@@ -74,7 +74,7 @@ export default function MypageAccount() {
           </div>
         </dl>
         <button type="button" onClick={doLogout} disabled={busy}
-          className="mt-4 min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50">
+          className="mt-4 min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-semibold cursor-pointer hover:bg-slate-50 disabled:opacity-50">
           로그아웃
         </button>
         {logoutError && <p role="alert" className="mt-3 text-sm text-rose-700">{logoutError}</p>}
@@ -83,7 +83,7 @@ export default function MypageAccount() {
         <h2 id="withdrawal-heading" className="text-xl font-bold">회원 탈퇴</h2>
         <p className="mt-2 text-sm text-slate-600">탈퇴 후에는 기존 계정으로 로그인할 수 없습니다.</p>
         <button type="button" disabled={busy} onClick={() => withdrawalDialog.current?.showModal()}
-          className="mt-4 min-h-11 rounded-lg border border-rose-200 px-4 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50">
+          className="mt-4 min-h-11 rounded-lg border border-rose-200 px-4 text-sm font-semibold text-rose-700 cursor-pointer hover:bg-rose-50 disabled:opacity-50">
           회원 탈퇴
         </button>
       </section>
