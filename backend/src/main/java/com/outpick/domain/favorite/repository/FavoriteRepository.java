@@ -17,8 +17,10 @@ public interface FavoriteRepository extends Repository<Favorite, Long> {
     @Query("""
             select new com.outpick.domain.favorite.repository.FavoritePlaceRow(
                 place.id, place.name, place.address, place.latitude, place.longitude,
+                image.url, image.attribution, image.sourceUrl, image.licenseType,
                 favorite.notified, place.publishStatus)
             from Favorite favorite join favorite.place place
+            left join place.representativeImage image
             where favorite.memberId = :memberId and place.publishStatus in :publishStatuses
             order by favorite.createdAt desc, favorite.id desc
             """)

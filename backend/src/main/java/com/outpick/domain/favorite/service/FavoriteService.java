@@ -39,7 +39,9 @@ public class FavoriteService {
 
     private static FavoritePlaceResponse toPlaceResponse(FavoritePlaceRow row) {
         if (row.publishStatus() == PlacePublishStatus.PUBLISHED) {
-            var summary = new PlaceSummaryResponse(row.id(), row.name(), row.address(), row.latitude(), row.longitude());
+            var summary = new PlaceSummaryResponse(
+                    row.id(), row.name(), row.address(), row.latitude(), row.longitude(),
+                    row.representativeImage(), row.imageAttribution(), row.imageSourceUrl(), row.imageLicense());
             return new FavoritePlaceResponse.Published(summary, row.isNotified(), row.publishStatus());
         }
         return new FavoritePlaceResponse.Unavailable(row.id(), row.name(), row.publishStatus());

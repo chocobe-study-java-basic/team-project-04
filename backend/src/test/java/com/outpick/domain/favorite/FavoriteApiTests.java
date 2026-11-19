@@ -3,6 +3,7 @@ package com.outpick.domain.favorite;
 import com.jayway.jsonpath.JsonPath;
 import com.outpick.domain.place.entity.Place;
 import com.outpick.domain.place.entity.PlacePublishStatus;
+import com.outpick.domain.place.entity.PlaceRepresentativeImage;
 import com.outpick.domain.place.entity.Region;
 import com.outpick.domain.place.repository.PlaceRepository;
 import jakarta.persistence.EntityManager;
@@ -30,6 +31,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -125,6 +127,14 @@ class FavoriteApiTests {
         var member = login("hidden-favorite@example.com");
         var otherMember = login("other-hidden-favorite@example.com");
         long placeId = createPlace();
+        String imageUrl = "https://tong.visitkorea.or.kr/cms/resource/1/123_image2_1.jpg";
+        String attribution = "한국관광공사 TourAPI 제공 · 테스트 사진";
+        String sourceUrl = "https://www.data.go.kr/data/15101578/openapi.do";
+        transactions.executeWithoutResult(transaction -> {
+            var place = entityManager.find(Place.class, placeId);
+            entityManager.persist(new PlaceRepresentativeImage(
+                    place, imageUrl, attribution, sourceUrl, "Type3", LocalDateTime.of(2026, 11, 19, 12, 0)));
+        });
         mvc.perform(member.withCsrf(createFavorite(placeId))).andExpect(status().isCreated());
         mvc.perform(member.withCsrf(notificationSetting(placeId, true))).andExpect(status().isOk());
         var enabledAt = notificationEnabledAt(placeId);
@@ -156,7 +166,10 @@ class FavoriteApiTests {
                 .andExpect(jsonPath("$[0].publishStatus").value("PUBLISHED"))
                 .andExpect(jsonPath("$[0].isNotified").value(true))
                 .andExpect(jsonPath("$[0].address").hasJsonPath())
-                .andExpect(jsonPath("$[0].representativeImage").hasJsonPath());
+                .andExpect(jsonPath("$[0].representativeImage").value(imageUrl))
+                .andExpect(jsonPath("$[0].imageAttribution").value(attribution))
+                .andExpect(jsonPath("$[0].imageSourceUrl").value(sourceUrl))
+                .andExpect(jsonPath("$[0].imageLicense").value("Type3"));
         place.changePublishStatus(PlacePublishStatus.HIDDEN);
         places.save(place);
 
@@ -225,7 +238,10 @@ class FavoriteApiTests {
                 .andExpect(jsonPath("$[0].isNotified").value(false))
                 .andExpect(jsonPath("$[1].id").value(placeId))
                 .andExpect(jsonPath("$[1].name").value("관심 장소"))
-                .andExpect(jsonPath("$[1].representativeImage").hasJsonPath())
+                .andExpect(jsonPath("$[1].representativeImage").value(nullValue()))
+                .andExpect(jsonPath("$[1].imageAttribution").value(nullValue()))
+                .andExpect(jsonPath("$[1].imageSourceUrl").value(nullValue()))
+                .andExpect(jsonPath("$[1].imageLicense").value(nullValue()))
                 .andExpect(jsonPath("$[1].place").doesNotHaveJsonPath())
                 .andExpect(jsonPath("$[1].isNotified").value(true));
         mvc.perform(get(FAVORITES).session(second.session()))
