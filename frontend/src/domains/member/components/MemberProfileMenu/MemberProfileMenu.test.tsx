@@ -18,7 +18,7 @@ describe('탐색 화면의 프로필 메뉴', () => {
 
     await user.click(screen.getByRole('button', { name: '프로필 메뉴' }));
 
-    expect((await screen.findByRole('link', { name: '마이페이지' })).getAttribute('href')).toMatch(/^\/account\/?$/);
+    expect((await screen.findByRole('link', { name: '마이페이지' })).getAttribute('href')).toMatch(/^\/mypage\/?$/);
     expect(screen.getByRole('link', { name: '관리자 화면' }).getAttribute('href')).toMatch(/^\/admin\/?$/);
   });
 

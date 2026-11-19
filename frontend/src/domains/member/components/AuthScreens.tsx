@@ -28,7 +28,7 @@ function Submit({ busy, success = false, children }: { busy: boolean; success?: 
 export function LoginScreen() {
   const router = useRouter();
   const loginParams = useSearchParams();
-  const destination = loginParams.get('next') === '/account/' ? '/account/'
+  const destination = loginParams.get('next') === '/mypage/' ? '/mypage/'
     : loginParams.get('next') === '/admin/' ? '/admin/' : '/';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,7 +40,8 @@ export function LoginScreen() {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError('');
     try { const member = await login({ email, password }); setSuccess(true);
-      window.setTimeout(() => router.push(member.role === 'ADMIN' ? '/admin/' : destination), 420); }
+      const target = destination === '/mypage/' ? destination : member.role === 'ADMIN' ? '/admin/' : destination;
+      window.setTimeout(() => router.push(target), 420); }
     catch (cause) { setError(errorText(cause)); }
     finally { setBusy(false); }
   }

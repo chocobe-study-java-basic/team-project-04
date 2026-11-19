@@ -470,10 +470,12 @@ Axios 인스턴스와 Query Provider·Query Client·example Query Key는 구현�
 
 1. `src/app/admin/` 아래에 페이지 디렉터리를 만들고 `page.tsx`에서 화면을 배치한다. 예를 들어 `src/app/admin/review-reports/page.tsx`는 `/admin/review-reports/`의 본문을 구성한다. [후기 신고 페이지](src/app/admin/review-reports/page.tsx)
 2. `src/app/admin/layout.tsx`가 하위 페이지에 운영자 접근 확인(`AdminAccess`), 공통 헤더, 사이드바, 본문 영역을 적용한다. 새 `page.tsx`에는 페이지 본문만 넣는다. 관리자 API의 권한은 백엔드에서 검사한다. [관리자 공통 레이아웃](src/app/admin/layout.tsx)
-3. 사이드바에 표시할 페이지는 `adminNavigationItems.ts`에 `label`, `href`, `Icon`을 등록한다. 후기 신고 메뉴는 `/admin/review-reports/`와 `lucide-react`의 `MessageSquareWarning`을 사용한다. [관리자 메뉴 항목](src/app/admin/_components/AdminNavigation/adminNavigationItems.ts)
+3. 사이드바에 표시할 관리자 페이지는 `accountSidebarItems.ts`의 `adminNavigationItems`에 `label`, `href`, `Icon`을 등록한다. 후기 신고 메뉴는 `/admin/review-reports/`와 `lucide-react`의 `MessageSquareWarning`을 사용한다. 일반 회원과 운영자에게 모두 표시할 마이페이지 메뉴는 같은 파일의 `commonNavigationItems`에 둔다. [사이드바 메뉴 목록](src/app/_components/AccountSidebar/accountSidebarItems.ts)
 4. 해당 페이지에서만 사용하는 조합 UI는 라우트의 `_components/`에 둔다. 도메인 기능은 담당 도메인에 둔다. 후기 신고 화면은 `src/domains/review/components/ReviewReportsAdmin/`에 컴포넌트와 스타일을 함께 두고, 신고 조회·처리 요청은 `src/domains/review/api/reviewApi.ts`에 둔다. [후기 신고 컴포넌트](src/domains/review/components/ReviewReportsAdmin/) · [후기 API](src/domains/review/api/reviewApi.ts)
 
 운영자로 로그인해 사이드바에서 새 메뉴를 선택한다. 본문과 현재 메뉴 표시를 확인하고, 같은 주소에 직접 접속하거나 새로고침해도 페이지가 열리는지 확인한다.
+
+마이페이지와 관리자 화면은 `AccountAreaLayout`에서 공통 헤더와 사이드바를 사용한다. 마이페이지에 화면을 추가할 때는 `src/app/mypage/` 아래에 `page.tsx`를 두고, 메뉴에 표시할 경우 공통 목록에 등록한다. 운영자는 두 화면에서 공통 메뉴 아래에 관리자 메뉴를 함께 본다. [공통 레이아웃](src/app/_components/AccountAreaLayout.tsx) · [마이페이지 레이아웃](src/app/mypage/layout.tsx)
 
 ### 장소 상세 URL과 메타정보
 
