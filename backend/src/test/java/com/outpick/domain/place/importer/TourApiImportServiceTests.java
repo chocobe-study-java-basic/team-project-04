@@ -1,12 +1,15 @@
 package com.outpick.domain.place.importer;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class TourApiImportServiceTests {
-    @Test void skipsExistingWithoutHttpAndContinuesAfterBadResponse() {
+    @Test
+    @DisplayName("기존 장소는 건너뛰고 응답 실패 후에도 다음 장소를 수집한다")
+    void skipsExistingWithoutHttpAndContinuesAfterBadResponse() {
         var writer = mock(TourImportWriter.class);
         when(writer.findExistingPlaceId(anyString())).thenReturn(null);
         when(writer.findExistingPlaceId("1")).thenReturn(10L);
@@ -23,7 +26,9 @@ class TourApiImportServiceTests {
         verify(writer).save(candidate);
     }
 
-    @Test void isolatesSaveFailureAndReportsSafeReason() {
+    @Test
+    @DisplayName("저장 실패를 격리하고 내부 예외를 노출하지 않는다")
+    void isolatesSaveFailureAndReportsSafeReason() {
         var writer = mock(TourImportWriter.class);
         when(writer.findExistingPlaceId(anyString())).thenReturn(null);
         when(writer.save(any())).thenThrow(new IllegalStateException("sensitive"));

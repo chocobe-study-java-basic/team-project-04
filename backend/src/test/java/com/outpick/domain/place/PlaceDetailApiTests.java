@@ -13,6 +13,7 @@ import com.outpick.domain.place.entity.SourceRecord;
 import jakarta.persistence.EntityManager;
 import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -183,6 +184,7 @@ class PlaceDetailApiTests {
     }
 
     @Test
+    @DisplayName("목록과 상세에서 같은 대표 사진과 출처를 추가 쿼리 없이 조회한다")
     void returnsTheSameVerifiedPhotoAndAttributionInListAndDetailWithoutExtraQueries() throws Exception {
         String url = "https://tong.visitkorea.or.kr/cms/resource/1/123_image2_1.jpg";
         persist(new PlaceRepresentativeImage(published, url, "한국관광공사 TourAPI 제공 · 테스트 사진",
@@ -207,6 +209,7 @@ class PlaceDetailApiTests {
     }
 
     @Test
+    @DisplayName("이용 권한이 불명확하거나 신뢰할 수 없는 사진 URL을 거절한다")
     void rejectsPhotosWithUnknownRightsOrUntrustedHost() {
         for (String url : new String[]{"https://example.com/image.jpg", "http://tong.visitkorea.or.kr/cms/resource/1/a.jpg",
                 "https://tong.visitkorea.or.kr/cms/resource/1/a.jpg?key=secret"}) {

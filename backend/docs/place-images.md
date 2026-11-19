@@ -2,7 +2,7 @@
 
 ## 저장·API 계약
 
-V5는 `place_representative_image`를 추가한다. `place_id`가 PK이자 장소 FK여서 장소당 대표 사진 한 장만 저장한다. URL, 제공 출처 문구, 출처 페이지 URL, 공공누리 유형, 확인일이 모두 필수다. 후기 업로드·MediaAsset·사진 갤러리 구조는 변경하지 않았다. 기존 ERD v3 SQL에 없던 추가 구현이므로 팀 ERD에도 이 테이블을 반영해야 한다.
+V8는 `place_representative_image`를 추가한다. `place_id`가 PK이자 장소 FK여서 장소당 대표 사진 한 장만 저장한다. URL, 제공 출처 문구, 출처 페이지 URL, 공공누리 유형, 확인일이 모두 필수다. 후기 업로드·MediaAsset·사진 갤러리 구조는 변경하지 않았다. 기존 ERD v3 SQL에 없던 추가 구현이므로 팀 ERD에도 이 테이블을 반영해야 한다.
 
 목록 `items[]`와 장소 상세는 동일한 네 필드를 반환한다.
 
@@ -23,7 +23,7 @@ V5는 `place_representative_image`를 추가한다. `place_id`가 PK이자 장�
 - 플라이스테이션: `4090100_image2_1.jpg`, Type1. 이미지 목록의 첫 접수대 사진 대신 윈드터널 체험 시설을 확인할 수 있는 사진을 선택했다.
 - 곤지암: 확인한 공통정보와 이미지 목록에 사진이 없어 등록하지 않는다. 다른 시설의 사진을 사용하지 않는다.
 
-V5를 적용한 로컬 DB에서 `scripts/review-initial-place-images.sql`을 명시적으로 실행한다. 기존 수집 이력에 연결된 공개 장소에만 등록하며 기존 대표 사진을 덮어쓰지 않는다. 첫 실행 4장, 재실행 0장을 확인했다. 일반 서버 시작이나 `importTourPlaces`가 자동으로 사진을 등록하는 것은 아니다.
+V8를 적용한 로컬 DB에서 `scripts/review-initial-place-images.sql`을 명시적으로 실행한다. 기존 수집 이력에 연결된 공개 장소에만 등록하며 기존 대표 사진을 덮어쓰지 않는다. 첫 실행 4장, 재실행 0장을 확인했다. 일반 서버 시작이나 `importTourPlaces`가 자동으로 사진을 등록하는 것은 아니다.
 
 ## 표시·장애 처리
 

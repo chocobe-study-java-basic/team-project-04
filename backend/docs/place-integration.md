@@ -2,7 +2,7 @@
 
 ## 브랜치와 조회 흐름
 
-`feat/place-api-integration`에서 백엔드 `feat/place-model`에 프론트 `feat/#1-place-list-ui`를 병합했다. 원래 두 브랜치는 유지한다. 통합 브랜치에 프론트 연결, 필터 선택지 API와 demo 초기화를 추가했다. `develop`/`main`에는 아직 병합하거나 푸시하지 않았다.
+장소 모델·공개 조회 API와 지도 기반 탐색 화면을 바탕으로, 화면의 샘플 데이터 조회를 실제 백엔드 API 호출로 전환한다. 필터 선택지 API와 명시적인 개발용 demo 초기화를 함께 제공한다. 공공 API 수집·대표 사진·운영 안내는 후속 범위다.
 
 브라우저 → `GET /api/v1/places/filters`로 선택지의 서버 ID 조회 → `GET /api/v1/places`로 목록/지도 검색 → `GET /api/v1/places/{id}`로 상세 조회.
 

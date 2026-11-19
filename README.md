@@ -111,6 +111,61 @@ make compose-reset
 
 이 Compose 구성은 로컬 개발용입니다. 운영 DB와 비밀 정보 관리는 배포 구조를 정할 때 별도로 구성합니다.
 
+Backend와 MySQL을 함께 컨테이너로 실행할 때는 별도의 `compose.deploy.yaml`을 사용합니다. IntelliJ 개발은 기존 `compose.yaml`을 그대로 사용합니다. 이미지 빌드·배포용 Compose 실행·종료는 [Backend Docker 실행 안내](backend/README.md#docker로-backend-실행)를 참고하세요.
+
+## Docker 이미지 빌드
+
+Docker Desktop을 실행하고 프로젝트 루트에서 사용합니다.
+
+Frontend 이미지 빌드에는 Node.js 26도 필요합니다. `frontend/.env`의 `NEXT_PUBLIC_KAKAO_MAP_JS_KEY`에 카카오 JavaScript 키를 설정합니다. 두 Frontend 명령 모두 이 파일의 지도 키만 읽어 Docker 빌드 인자로 전달하며, 파일이 없거나 키가 비어 있으면 빌드를 중단합니다. 환경 파일 자체는 Git과 이미지에 포함하지 않습니다. 배포용 API 주소는 `/`로 고정하고 `.env.local`은 읽지 않습니다. 키는 빌드된 JavaScript에 공개되므로 REST API·Admin 키를 넣지 않습니다.
+
+```bash
+make backend-docker-build
+make frontend-docker-build
+```
+
+각 명령은 현재 소스를 Docker 내부에서 AMD64·ARM64로 빌드합니다. 결과는 `chocobe/outpick-backend:v0`, `chocobe/outpick-frontend:v0` 이름으로 로컬 Docker에 저장합니다. 로컬의 JAR나 Frontend 정적 파일을 미리 빌드할 필요는 없습니다. 테스트는 별도로 실행합니다.
+
+태그를 바꾸려면 `IMAGE_TAG`를 지정합니다.
+
+```bash
+make backend-docker-build IMAGE_TAG=v1
+make frontend-docker-build IMAGE_TAG=v1
+```
+
+`--load`로 여러 플랫폼을 로컬에 저장하므로 Docker Desktop의 containerd 이미지 저장소가 필요합니다. Windows는 Linux 컨테이너 모드를 사용합니다. 지원하지 않는 저장소에서는 빌드가 실패하므로 Docker Desktop 설정의 `Use containerd for pulling and storing images`를 확인합니다.
+
+로컬에 보관한 두 플랫폼을 나중에 함께 업로드하려면 Docker Hub 로그인 후 실행합니다. Push에 `--platform`을 지정하지 않습니다.
+
+```bash
+docker push chocobe/outpick-backend:v0
+docker push chocobe/outpick-frontend:v0
+```
+
+빌드와 업로드를 한 번에 하려면 다음 명령을 사용합니다.
+
+```bash
+make backend-docker-build-push
+make frontend-docker-build-push
+```
+
+각 명령은 현재 소스로 AMD64·ARM64 이미지를 함께 빌드하고 같은 태그로 Docker Hub에 올립니다. 별도의 `*-docker-build` 실행이나 `docker push`는 필요하지 않습니다. `IMAGE_TAG=v1`처럼 태그를 변경할 수 있으며 같은 태그가 이미 있으면 교체됩니다. `*-docker-build-push`는 `--push`로 업로드하며, 로컬 이미지 갱신은 `*-docker-build` 또는 Pull로 진행합니다. 두 명령 모두 멀티 플랫폼으로 빌드합니다.
+
+업로드한 이미지를 Mac이나 EC2에서 사용하려면 다음 명령으로 내려받고 컨테이너에 적용합니다.
+
+```bash
+docker compose -f compose.deploy.yaml pull backend nginx
+docker compose -f compose.deploy.yaml up -d --wait
+```
+
+`nginx`는 Frontend 이미지를 사용하는 서비스 이름입니다. Pull 시 각 컴퓨터에 맞는 플랫폼이 선택됩니다. 다른 태그로 만든 이미지를 Compose에서 사용하려면 `compose.deploy.yaml`의 해당 `image` 태그도 맞춥니다. EC2 파일 업로드와 응답 확인은 [Frontend 배포 안내](frontend/docs/deployment.md)를 참고합니다.
+
 ## Frontend 개발 환경
 
 Next.js·TypeScript 기반 Frontend의 Node 버전, 실행·검사·테스트·정적 빌드 방법은 [Frontend README](frontend/README.md)를 참고합니다. 공통 기반과 로컬 브라우저 검증을 마쳤으며, Zustand는 공유할 UI 상태가 확정될 때까지 보류합니다.
+
+Frontend Docker 이미지 빌드와 기존 EC2에서의 화면·API 확인은 [Frontend 배포 안내](frontend/docs/deployment.md)를 참고합니다.
+
+## 도메인과 HTTPS 배포
+
+`outpick.chocobe.shop`의 HTTPS 설정과 인증서 발급·자동 갱신·EC2 재생성 시 백업 복원은 [HTTPS 실행 안내](infra/https.md)를 참고합니다. HTTPS 적용 후 배포에는 `compose.deploy.yaml`과 `compose.https.yaml`을 함께 지정합니다.
