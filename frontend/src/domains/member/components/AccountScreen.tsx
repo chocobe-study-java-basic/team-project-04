@@ -56,7 +56,11 @@ export default function AccountScreen() {
     <div className="account-panel">{loading ? <p role="status">계정 정보를 불러오는 중입니다...</p> : loadError ? <p className="account-alert" role="alert">서버에 연결하지 못해 계정 정보를 확인할 수 없습니다. 잠시 후 다시 열어 주세요.</p> : member && <>
       <div className="account-member"><span className="account-avatar" aria-hidden="true">{member.nickname.slice(0, 1)}</span><div><strong>{member.nickname}</strong><small>{member.email}</small></div></div>
       <div className="account-action-row"><Link href="/">장소 둘러보기</Link><button type="button" onClick={doLogout} disabled={busy}>로그아웃</button></div>
-      {member.role === 'ADMIN' && <p><Link href="/admin/review-reports/">후기 신고 검토 →</Link></p>}
+      {member.role === 'ADMIN' && <Link className="account-admin-entry" href="/admin/">
+        <span className="account-admin-icon" aria-hidden="true">⌘</span>
+        <span><small>ADMIN WORKSPACE</small><strong>운영 대시보드</strong><em>신고 검토와 장소 관리를 시작하세요</em></span>
+        <span className="account-admin-arrow" aria-hidden="true">↗</span>
+      </Link>}
       <div className="account-danger"><strong>회원 탈퇴</strong><p>탈퇴하면 계정과 개인 설정이 삭제됩니다. 탈퇴 전 안내를 확인해 주세요.</p><button type="button" onClick={() => { setError(''); setModal(true); }}>회원 탈퇴</button></div>
     </>}</div>
     {!modal && error && <p className="account-alert" role="alert">{error}</p>}
