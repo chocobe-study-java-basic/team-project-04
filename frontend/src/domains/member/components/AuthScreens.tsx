@@ -16,32 +16,41 @@ function Header({ step, title, description }: { step: string; title: string; des
   return <><span className="account-kicker">{step}</span><h2 className="account-title">{title}</h2><p className="account-intro">{description}</p></>;
 }
 
-function Submit({ busy, children }: { busy: boolean; children: React.ReactNode }) {
-  return <button className="account-button" disabled={busy} type="submit"><span>{busy ? '처리 중...' : children}</span></button>;
+function Submit({ busy, success = false, children }: { busy: boolean; success?: boolean; children: React.ReactNode }) {
+  return <button className={`account-button${busy ? ' is-loading' : ''}${success ? ' is-success' : ''}`}
+    disabled={busy || success} type="submit" aria-busy={busy}>
+    <span className="account-button-label">{success ? '완료됐어요' : busy ? '처리 중...' : children}</span>
+    {busy && <span className="account-button-spinner" aria-hidden="true" />}
+    {success && <span className="account-button-check" aria-hidden="true">✓</span>}
+  </button>;
 }
 
 export function LoginScreen() {
   const router = useRouter();
   const loginParams = useSearchParams();
+  const destination = loginParams.get('next') === '/account/' ? '/account/' : '/';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const notice = loginParams.has('reset') ? '비밀번호가 변경되었습니다. 새 비밀번호로 로그인해 주세요.'
     : loginParams.has('signup') ? '회원가입이 완료되었습니다. 로그인해 주세요.' : '';
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError('');
-    try { await login({ email, password }); router.push('/account/'); }
+    try { await login({ email, password }); setSuccess(true); window.setTimeout(() => router.push(destination), 420); }
     catch (cause) { setError(errorText(cause)); }
     finally { setBusy(false); }
   }
-  return <AccountFrame><Header step="WELCOME BACK" title="다시 만나 반가워요" description="계정에 로그인하고 저장한 장소와 알림을 확인하세요." />
-    <form className="account-panel account-form" onSubmit={submit}>
+  return <AccountFrame><Header step="WELCOME BACK" title="다시 만나 반가워요" description="로그인하면 계정 정보를 확인하고 장소 탐색을 이어갈 수 있어요." />
+    <form className={`account-panel account-form${error ? ' has-error' : ''}`} onSubmit={submit}>
       {notice && <p className="account-alert success" role="status">{notice}</p>}
-      <FloatingField label="이메일" type="email" value={email} onChange={setEmail} autoComplete="email" />
-      <FloatingField label="비밀번호" type="password" value={password} onChange={setPassword} autoComplete="current-password" />
+      <FloatingField label="이메일" type="email" value={email} onChange={setEmail} autoComplete="email" disabled={busy || success} />
+      <FloatingField label="비밀번호" type="password" value={password} onChange={setPassword} autoComplete="current-password" disabled={busy || success} />
       {error && <p className="account-alert" role="alert">{error}</p>}
-      <Submit busy={busy}>로그인</Submit>
+      <Submit busy={busy} success={success}>로그인</Submit>
+      <Link className="account-guest-button" href="/"><span>비회원으로 시작하기</span><span aria-hidden="true">↗</span></Link>
+      <p className="account-guest-note">로그인 없이 장소 검색과 지도를 이용할 수 있어요.</p>
       <Link className="account-forgot" href="/password-reset/">비밀번호를 잊으셨나요?</Link>
     </form><div className="account-links"><span>아직 계정이 없나요?</span><Link href="/signup/">회원가입</Link></div>
   </AccountFrame>;
@@ -52,21 +61,30 @@ export function SignupScreen() {
   const [email, setEmail] = useState('');
   const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [confirmationError, setConfirmationError] = useState('');
   async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setError('');
-    try { await signup({ email, password, nickname }); router.push('/login/?signup=done'); }
+    event.preventDefault();
+    if (password !== confirmation) { setConfirmationError('비밀번호가 일치하지 않습니다.'); return; }
+    setBusy(true); setError(''); setConfirmationError('');
+    try { await signup({ email, password, nickname }); setSuccess(true); window.setTimeout(() => router.push('/login/?signup=done'), 420); }
     catch (cause) { setError(errorText(cause)); }
     finally { setBusy(false); }
   }
-  return <AccountFrame><Header step="JOIN OUTPICK" title="다음 외출을 함께해요" description="이메일로 계정을 만들고 관심 있는 장소를 모아 보세요." />
-    <form className="account-panel account-form" onSubmit={submit}>
-      <FloatingField label="이메일" type="email" value={email} onChange={setEmail} autoComplete="email" />
-      <FloatingField label="닉네임" value={nickname} onChange={setNickname} autoComplete="nickname" />
-      <FloatingField label="비밀번호" type="password" value={password} onChange={setPassword} autoComplete="new-password" />
+  return <AccountFrame><Header step="JOIN OUTPICK" title="다음 외출을 함께해요" description="이메일로 계정을 만들고 장소 탐색을 시작해 보세요." />
+    <form className={`account-panel account-form${error ? ' has-error' : ''}`} onSubmit={submit}>
+      <FloatingField label="이메일" type="email" value={email} onChange={setEmail} autoComplete="email" disabled={busy || success} />
+      <FloatingField label="닉네임" value={nickname} onChange={setNickname} autoComplete="nickname" disabled={busy || success} />
+      <FloatingField label="비밀번호" type="password" value={password} onChange={value => { setPassword(value); setConfirmationError(''); }} autoComplete="new-password" minLength={8} maxLength={64} disabled={busy || success} />
+      <p className="account-field-note">비밀번호는 8~64자로 입력해 주세요.</p>
+      <FloatingField label="비밀번호 확인" type="password" value={confirmation} onChange={value => { setConfirmation(value); setConfirmationError(''); }} autoComplete="new-password" minLength={8} maxLength={64} error={confirmationError} disabled={busy || success} />
       {error && <p className="account-alert" role="alert">{error}</p>}
-      <Submit busy={busy}>회원가입</Submit>
+      <Submit busy={busy} success={success}>회원가입</Submit>
+      <Link className="account-guest-button" href="/"><span>비회원으로 시작하기</span><span aria-hidden="true">↗</span></Link>
+      <p className="account-guest-note">계정을 만들지 않아도 먼저 장소를 둘러볼 수 있어요.</p>
     </form><div className="account-links"><span>이미 계정이 있나요?</span><Link href="/login/">로그인</Link></div>
   </AccountFrame>;
 }
@@ -98,7 +116,9 @@ export function ResetConfirmScreen() {
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [confirmationError, setConfirmationError] = useState('');
   useEffect(() => {
     let active = true;
     if (!token) return;
@@ -107,9 +127,9 @@ export function ResetConfirmScreen() {
   }, [token]);
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (password !== confirmation) { setError('새 비밀번호가 일치하지 않습니다.'); return; }
+    if (password !== confirmation) { setConfirmationError('새 비밀번호가 일치하지 않습니다.'); return; }
     setBusy(true); setError('');
-    try { await confirmPasswordReset({ token, newPassword: password, newPasswordConfirmation: confirmation }); router.push('/login/?reset=done'); }
+    try { await confirmPasswordReset({ token, newPassword: password, newPasswordConfirmation: confirmation }); setSuccess(true); window.setTimeout(() => router.push('/login/?reset=done'), 420); }
     catch (cause) { setError(errorText(cause)); }
     finally { setBusy(false); }
   }
@@ -117,9 +137,10 @@ export function ResetConfirmScreen() {
     <div className="account-panel">{!token || valid === false ? <p className="account-alert" role="alert">재설정 링크가 유효하지 않습니다. 새 링크를 요청해 주세요.</p>
       : valid === null ? <p role="status">재설정 링크를 확인하고 있습니다...</p>
         : <form className="account-form" onSubmit={submit}>
-          <FloatingField label="새 비밀번호" type="password" value={password} onChange={setPassword} autoComplete="new-password" />
-          <FloatingField label="새 비밀번호 확인" type="password" value={confirmation} onChange={setConfirmation} autoComplete="new-password" />
-          {error && <p className="account-alert" role="alert">{error}</p>}<Submit busy={busy}>비밀번호 변경</Submit>
+          <FloatingField label="새 비밀번호" type="password" value={password} onChange={value => { setPassword(value); setConfirmationError(''); }} autoComplete="new-password" minLength={8} maxLength={64} disabled={busy || success} />
+          <p className="account-field-note">비밀번호는 8~64자로 입력해 주세요.</p>
+          <FloatingField label="새 비밀번호 확인" type="password" value={confirmation} onChange={value => { setConfirmation(value); setConfirmationError(''); }} autoComplete="new-password" minLength={8} maxLength={64} error={confirmationError} disabled={busy || success} />
+          {error && <p className="account-alert" role="alert">{error}</p>}<Submit busy={busy} success={success}>비밀번호 변경</Submit>
         </form>}</div><div className="account-links"><Link href="/password-reset/">새 링크 요청</Link><Link href="/login/">로그인</Link></div>
   </AccountFrame>;
 }

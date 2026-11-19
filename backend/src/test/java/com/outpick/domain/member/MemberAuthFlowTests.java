@@ -45,6 +45,13 @@ class MemberAuthFlowTests {
 
         mvc.perform(post("/api/v1/auth/signup").session((org.springframework.mock.web.MockHttpSession) session)
                         .header(header, csrf).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"short@example.com\",\"password\":\"short\",\"nickname\":\"테스트\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        assertThat(members.findByEmail("short@example.com")).isEmpty();
+
+        mvc.perform(post("/api/v1/auth/signup").session((org.springframework.mock.web.MockHttpSession) session)
+                        .header(header, csrf).contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"email":"TEST@EXAMPLE.COM","password":"password123","nickname":"영빈"}
                                 """))
