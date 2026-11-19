@@ -9,6 +9,7 @@ import { environmentLabel, seasonLabel } from '@/domains/place/api/placeApi';
 import { safeHttpUrl } from '@/domains/place/lib/placeLinks';
 import { ApiError } from '@/shared/lib/http/apiError';
 import { getListReturnUrl } from '@/domains/place/lib/placeNavigation';
+import PlaceReviews from '@/domains/review/components/PlaceReviews';
 import './PlaceDetail.css';
 
 export default function PlaceDetail() {
@@ -100,6 +101,7 @@ export default function PlaceDetail() {
                 <Link href={returnUrl} scroll={false} className="outpick-returnButton">다른 장소 살펴보기</Link>
               </aside>
             </div>
+            <PlaceReviews placeId={place.id} />
           </>
         )}
         <footer className="outpick-detailFooter">OUTPICK · 밖으로, 더 멀리</footer>
