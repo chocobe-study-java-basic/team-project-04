@@ -86,6 +86,14 @@ class PasswordResetFlowTests {
         mvc.perform(post("/api/v1/auth/password-reset/confirm").session(session).header(header, csrf)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"token\":\"" + rawToken
+                                + "\",\"newPassword\":\"short\",\"newPasswordConfirmation\":\"short\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        mvc.perform(get("/api/v1/auth/password-reset/validate").param("token", rawToken))
+                .andExpect(status().isNoContent());
+        mvc.perform(post("/api/v1/auth/password-reset/confirm").session(session).header(header, csrf)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + rawToken
                                 + "\",\"newPassword\":\"new-pass\",\"newPasswordConfirmation\":\"new-pass\"}"))
                 .andExpect(status().isOk());
 

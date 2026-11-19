@@ -2,6 +2,7 @@ package com.outpick.domain.place.service;
 
 import com.outpick.domain.place.dto.PlaceActivityResponse;
 import com.outpick.domain.place.dto.PlaceDetailResponse;
+import com.outpick.domain.place.dto.PlaceOperatingInfoResponse;
 import com.outpick.domain.place.entity.PlaceActivitySeason;
 import com.outpick.domain.place.exception.PlaceErrorCode;
 import com.outpick.domain.place.repository.PlaceDetailRepository;
@@ -33,11 +34,15 @@ public class PlaceDetailService {
                 activity.getId(), activity.getActivityType().getId(), activity.getActivityType().getName(),
                 activity.getEnvironmentType(), seasons.getOrDefault(activity.getId(), List.of()))).toList();
         var image = place.getRepresentativeImage();
+        var info = place.getOperatingInfo();
+        var operatingInfo = info == null ? null : new PlaceOperatingInfoResponse(info.getOperatingHours(), info.getRestDays(),
+                info.getContactPhone(), info.getSourceUrl(), info.getCollectedAt(), info.getVerificationStatus().name(),
+                info.getVerifiedAt(), info.getReviewNote(), info.getOfficialSourceUrl(), info.getComparedAt());
         return new PlaceDetailResponse(place.getId(), place.getName(), place.getNameAlias(), place.getIntroduce(),
                 place.getAddress(), place.getLatitude(), place.getLongitude(), place.getHomepage(), place.getOperationStatus(),
                 place.getReviewedAt(), image == null ? null : image.getUrl(),
                 image == null ? null : image.getAttribution(), image == null ? null : image.getSourceUrl(),
                 image == null ? null : image.getLicenseType(), activityResponses,
-                repository.findActiveNotices(placeId, LocalDateTime.now(placeClock)), repository.findVerifiedSources(placeId));
+                repository.findActiveNotices(placeId, LocalDateTime.now(placeClock)), repository.findVerifiedSources(placeId), operatingInfo);
     }
 }

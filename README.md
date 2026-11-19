@@ -151,21 +151,16 @@ make frontend-docker-build-push
 
 각 명령은 현재 소스로 AMD64·ARM64 이미지를 함께 빌드하고 같은 태그로 Docker Hub에 올립니다. 별도의 `*-docker-build` 실행이나 `docker push`는 필요하지 않습니다. `IMAGE_TAG=v1`처럼 태그를 변경할 수 있으며 같은 태그가 이미 있으면 교체됩니다. `*-docker-build-push`는 `--push`로 업로드하며, 로컬 이미지 갱신은 `*-docker-build` 또는 Pull로 진행합니다. 두 명령 모두 멀티 플랫폼으로 빌드합니다.
 
-업로드한 이미지를 Mac이나 EC2에서 사용하려면 다음 명령으로 내려받고 컨테이너에 적용합니다.
-
-```bash
-docker compose -f compose.deploy.yaml pull backend nginx
-docker compose -f compose.deploy.yaml up -d --wait
-```
-
-`nginx`는 Frontend 이미지를 사용하는 서비스 이름입니다. Pull 시 각 컴퓨터에 맞는 플랫폼이 선택됩니다. 다른 태그로 만든 이미지를 Compose에서 사용하려면 `compose.deploy.yaml`의 해당 `image` 태그도 맞춥니다. EC2 파일 업로드와 응답 확인은 [Frontend 배포 안내](frontend/docs/deployment.md)를 참고합니다.
+EC2 파일 업로드·이미지 적용·응답 확인은 [배포 통합 안내](infra/deploy.md)를 따릅니다. 다른 태그로 만든 이미지를 사용하려면 `compose.deploy.yaml`의 해당 `image` 태그도 맞춥니다. 로컬에서 배포 이미지를 실행하는 방법은 [Frontend 이미지 안내](frontend/docs/deployment.md)에 있습니다.
 
 ## Frontend 개발 환경
 
 Next.js·TypeScript 기반 Frontend의 Node 버전, 실행·검사·테스트·정적 빌드 방법은 [Frontend README](frontend/README.md)를 참고합니다. 공통 기반과 로컬 브라우저 검증을 마쳤으며, Zustand는 공유할 UI 상태가 확정될 때까지 보류합니다.
 
-Frontend Docker 이미지 빌드와 기존 EC2에서의 화면·API 확인은 [Frontend 배포 안내](frontend/docs/deployment.md)를 참고합니다.
+Frontend Docker 이미지 빌드와 로컬 실행은 [Frontend 이미지 안내](frontend/docs/deployment.md)를 참고합니다. EC2에서의 적용은 아래 배포 안내를 따릅니다.
 
-## 도메인과 HTTPS 배포
+## EC2 배포
 
-`outpick.chocobe.shop`의 HTTPS 설정과 인증서 발급·자동 갱신·EC2 재생성 시 백업 복원은 [HTTPS 실행 안내](infra/https.md)를 참고합니다. HTTPS 적용 후 배포에는 `compose.deploy.yaml`과 `compose.https.yaml`을 함께 지정합니다.
+새 EC2 생성 후의 전체 파일 업로드·환경변수 작성·인증서 복원 또는 최초 발급·HTTPS 실행·갱신 예약·초기 장소 준비는 [EC2 배포 통합 안내](infra/deploy.md)를 순서대로 따릅니다. 기존 EC2의 앱 업데이트도 같은 문서의 별도 절에서 안내합니다.
+
+인프라 생성은 [Terraform 안내](infra/README.md), 배포 후 인증서 관리는 [HTTPS와 인증서 관리](infra/https.md), 초기 장소 처리 결과와 실패 대응은 [EC2 장소 스크립트 설명](backend/docs/ec2-initial-places.md)에 있습니다.

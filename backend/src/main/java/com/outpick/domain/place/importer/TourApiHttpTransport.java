@@ -8,7 +8,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
-public class TourApiHttpTransport implements TourApiTransport {
+public class TourApiHttpTransport implements TourApiTransport, TourIntroTransport {
     private static final int MAX_BODY_BYTES = 2 * 1024 * 1024;
     private final String serviceKey;
     private final HttpClient client;
@@ -26,11 +26,21 @@ public class TourApiHttpTransport implements TourApiTransport {
 
     @Override
     public String fetchCommon(String contentId) {
+        return fetch(contentId, false);
+    }
+
+    @Override
+    public String fetchIntro(String contentId) {
+        return fetch(contentId, true);
+    }
+
+    private String fetch(String contentId, boolean intro) {
         if (contentId == null || !contentId.matches("[0-9]{1,50}"))
             throw new TourApiException(TourApiException.Reason.INVALID_DATA);
         try {
-            var uri = URI.create("https://apis.data.go.kr/B551011/KorService2/detailCommon2"
+            var uri = URI.create("https://apis.data.go.kr/B551011/KorService2/" + (intro ? "detailIntro2" : "detailCommon2")
                     + "?MobileOS=ETC&MobileApp=OUTPICK&_type=json&numOfRows=1&pageNo=1&contentId=" + contentId
+                    + (intro ? "&contentTypeId=28" : "")
                     + "&serviceKey=" + URLEncoder.encode(serviceKey, StandardCharsets.UTF_8));
             var request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(15)).GET().build();
             var response = client.send(request, HttpResponse.BodyHandlers.limiting(

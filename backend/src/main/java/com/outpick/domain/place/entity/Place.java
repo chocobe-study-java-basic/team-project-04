@@ -72,6 +72,14 @@ public class Place {
     @OneToOne(mappedBy = "place", fetch = FetchType.LAZY)
     private PlaceRepresentativeImage representativeImage;
 
+    @OneToOne(mappedBy = "place", fetch = FetchType.LAZY)
+    private PlaceOperatingInfo operatingInfo;
+
+    void attachOperatingInfo(PlaceOperatingInfo info) {
+        if (operatingInfo != null && operatingInfo != info) throw new IllegalStateException("이미 수집된 운영 안내가 있습니다.");
+        this.operatingInfo = info;
+    }
+
     void attachRepresentativeImage(PlaceRepresentativeImage image) {
         if (representativeImage != null && representativeImage != image)
             throw new IllegalStateException("이미 등록된 대표 사진이 있습니다.");
