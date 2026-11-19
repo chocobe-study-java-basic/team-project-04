@@ -6,7 +6,8 @@
 - V5: 인증 버전 (#13).
 - V6: 비밀번호 재설정 토큰 (#13).
 - V7: `create_tour_api_import_tracking`.
-- V8: `create_place_representative_image` (사진 브랜치).
+- V8: `create_favorites` (#14).
+- 사진 브랜치의 `create_place_representative_image`는 V8 중복을 피하도록 후속 병합 전에 번호를 조율한다.
 - V9: `create_place_operating_info` (운영 정보 브랜치).
 
 회원 → 재설정 → 장소 수집 → 사진 → 운영 정보 순서로 병합한다. 회원 PR이 병합되기 전에는 누락된 파일이나 성공 이력을 임의로 만들지 않는다.
