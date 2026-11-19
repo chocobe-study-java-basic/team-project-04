@@ -1,5 +1,6 @@
 package com.outpick.domain.place.importer;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -14,7 +15,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class TourApiHttpTransportTests {
-    @Test @SuppressWarnings("unchecked")
+    @Test
+    @DisplayName("인증키를 한 번 인코딩하고 공식 호스트로 요청한다")
+    @SuppressWarnings("unchecked")
     void encodesDecodingKeyOnceAndUsesFixedOfficialHost() throws Exception {
         var client = mock(HttpClient.class);
         HttpResponse<byte[]> response = mock(HttpResponse.class);
@@ -33,7 +36,9 @@ class TourApiHttpTransportTests {
         assertThat(request.getValue().uri().getRawQuery()).contains("contentTypeId=28", "serviceKey=a%2Bb%2Fc%3D%3D");
     }
 
-    @Test void sanitizesTransportExceptionsAndRejectsInvalidIdBeforeRequest() throws Exception {
+    @Test
+    @DisplayName("예외에서 인증키를 숨기고 잘못된 ID는 요청 전에 거절한다")
+    void sanitizesTransportExceptionsAndRejectsInvalidIdBeforeRequest() throws Exception {
         var client = mock(HttpClient.class);
         when(client.send(any(), any())).thenThrow(new IOException("https://example.com?serviceKey=secret"));
         var transport = new TourApiHttpTransport("secret", client);
@@ -44,7 +49,9 @@ class TourApiHttpTransportTests {
         verifyNoInteractions(client);
     }
 
-    @Test void preservesInterruptFlag() throws Exception {
+    @Test
+    @DisplayName("요청이 중단되면 인터럽트 상태를 유지한다")
+    void preservesInterruptFlag() throws Exception {
         var client = mock(HttpClient.class);
         when(client.send(any(), any())).thenThrow(new InterruptedException("secret"));
         try {

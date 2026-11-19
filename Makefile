@@ -1,7 +1,11 @@
 .DEFAULT_GOAL := help
 
-.PHONY:
+IMAGE_TAG ?= v0
+
+.PHONY: \
 	help \
+	backend-docker-build \
+	backend-docker-build-push \
 	compose-up \
 	compose-down \
 	compose-reset \
@@ -10,19 +14,46 @@
 	frontend-typecheck \
 	frontend-test \
 	frontend-build \
-	frontend-preview
+	frontend-preview \
+	frontend-docker-build \
+	frontend-docker-build-push
 
 help:
-	@echo "make compose-up          Start local MySQL and wait until ready"
-	@echo "make compose-down        Stop local MySQL (keep data)"
-	@echo "make compose-reset       Delete local DB data and restart (confirmation required)"
-	@echo "-----------------------"
-	@echo "make frontend-dev        Install dependencies if needed and start frontend"
-	@echo "make frontend-lint       Run frontend ESLint"
-	@echo "make frontend-typecheck  Check frontend TypeScript types"
-	@echo "make frontend-test       Run frontend tests once"
-	@echo "make frontend-build      Build frontend static files"
-	@echo "make frontend-preview    Serve existing frontend build on localhost:3000 (Python 3 required)"
+	@echo "-------------------------------"
+	@echo ""
+	@echo "       Outpick Makefile"
+	@echo ""
+	@echo "-------------------------------"
+	@echo "make backend-docker-build         Build AMD64/ARM64 backend images locally (IMAGE_TAG=v0)"
+	@echo "make backend-docker-build-push    Build AMD64/ARM64 backend images and push to Docker Hub (IMAGE_TAG=v0)"
+	@echo "-------------------------------"
+	@echo "make compose-up                   Start local MySQL and wait until ready"
+	@echo "make compose-down                 Stop local MySQL (keep data)"
+	@echo "make compose-reset                Delete local DB data and restart (confirmation required)"
+	@echo "-------------------------------"
+	@echo "make frontend-dev                 Install dependencies if needed and start frontend"
+	@echo "make frontend-lint                Run frontend ESLint"
+	@echo "make frontend-typecheck           Check frontend TypeScript types"
+	@echo "make frontend-test                Run frontend tests once"
+	@echo "make frontend-build               Build frontend static files"
+	@echo "make frontend-preview             Serve existing frontend build on localhost:3000 (Python 3 required)"
+	@echo "make frontend-docker-build        Build AMD64/ARM64 frontend images locally (IMAGE_TAG=v0)"
+	@echo "make frontend-docker-build-push   Build AMD64/ARM64 frontend images and push to Docker Hub (IMAGE_TAG=v0)"
+	@echo "-------------------------------"
+
+# ---------------------------------------------------------------------------------
+#
+# backend
+# - backend 개발 환경 커멘드
+#
+# ---------------------------------------------------------------------------------
+# AMD64·ARM64 이미지를 빌드해 로컬에 저장합니다. containerd 이미지 저장소가 필요합니다.
+backend-docker-build:
+	docker buildx build --platform linux/amd64,linux/arm64 -t "chocobe/outpick-backend:$(IMAGE_TAG)" --load ./backend
+
+# Mac과 EC2용 이미지를 함께 빌드해 업로드합니다. Docker Hub 로그인이 필요합니다.
+backend-docker-build-push:
+	docker buildx build --platform linux/amd64,linux/arm64 -t "chocobe/outpick-backend:$(IMAGE_TAG)" --push ./backend
 
 # ---------------------------------------------------------------------------------
 #
@@ -73,3 +104,11 @@ frontend-build:
 frontend-preview:
 	@test -f frontend/out/index.html || { echo "빌드 결과가 없습니다. make frontend-build를 먼저 실행하세요."; exit 1; }
 	python3 -m http.server 3000 --bind 127.0.0.1 --directory frontend/out
+
+# AMD64·ARM64 이미지를 빌드해 로컬에 저장합니다. containerd 이미지 저장소가 필요합니다.
+frontend-docker-build:
+	node frontend/scripts/docker-build.mjs --load "$(IMAGE_TAG)"
+
+# Mac과 EC2용 이미지를 함께 빌드해 업로드합니다. Docker Hub 로그인이 필요합니다.
+frontend-docker-build-push:
+	node frontend/scripts/docker-build.mjs --push "$(IMAGE_TAG)"

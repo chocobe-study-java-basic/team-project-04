@@ -1,5 +1,6 @@
 package com.outpick.domain.place.importer;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,7 +27,9 @@ class TourImportPersistenceTests {
     @Autowired JdbcTemplate jdbc;
     @Autowired TourOperatingInfoWriter operatingWriter;
 
-    @Test void initialOperatingCollectionIsUnverifiedAndNeverOverwritesReviewedValues() {
+    @Test
+    @DisplayName("운영 정보는 미검수로 최초 저장하고 재수집으로 검토 값을 덮어쓰지 않는다")
+    void initialOperatingCollectionIsUnverifiedAndNeverOverwritesReviewedValues() {
         var imported = writer.save(candidate("106"));
         assertThat(operatingWriter.saveInitial(new TourOperatingSnapshot("106", "평일 10:00", "월요일", "1855-3946"))).isEqualTo("CREATED");
         assertThat(jdbc.queryForObject("select verification_status from place_operating_info where place_id=?", String.class, imported.placeId()))
@@ -39,7 +42,9 @@ class TourImportPersistenceTests {
         assertThat(jdbc.queryForObject("select review_note from place_operating_info where place_id=?", String.class, imported.placeId())).isEqualTo("공식 안내와 다름");
     }
 
-    @Test void invalidOperatingCollectionRollsBackAndCanBeRetried() {
+    @Test
+    @DisplayName("잘못된 운영 정보 저장을 롤백하고 다시 수집할 수 있다")
+    void invalidOperatingCollectionRollsBackAndCanBeRetried() {
         var imported = writer.save(candidate("107"));
         assertThatThrownBy(() -> operatingWriter.saveInitial(new TourOperatingSnapshot("107", null, null, null)))
                 .isInstanceOf(RuntimeException.class);
@@ -53,7 +58,9 @@ class TourImportPersistenceTests {
         return new TourApiNormalizer().normalize(TourApiTests.target(id), TourApiTests.place(id, "126.1", ""));
     }
 
-    @Test void savesDraftWithUnverifiedSourceAndSkipsWithoutOverwriting() {
+    @Test
+    @DisplayName("검수 전으로 저장하고 재수집 시 기존 정보를 덮어쓰지 않는다")
+    void savesDraftWithUnverifiedSourceAndSkipsWithoutOverwriting() {
         var result = writer.save(candidate("101"));
         assertThat(result.status()).isEqualTo(TourImportResult.Status.CREATED);
         long id = result.placeId();
@@ -73,7 +80,9 @@ class TourImportPersistenceTests {
         assertThat(jdbc.queryForObject("select count(*) from source_record where type='TOUR_API' and origin_id='101'", Integer.class)).isEqualTo(1);
     }
 
-    @Test void concurrentImportsProduceExactlyOnePlace() throws Exception {
+    @Test
+    @DisplayName("동시 수집에도 장소를 한 번만 저장한다")
+    void concurrentImportsProduceExactlyOnePlace() throws Exception {
         var gate = new CountDownLatch(1);
         try (var pool = Executors.newFixedThreadPool(2)) {
             var first = pool.submit(() -> { gate.await(); return writer.save(candidate("102")); });
@@ -87,7 +96,9 @@ class TourImportPersistenceTests {
         assertThat(jdbc.queryForObject("select count(*) from source_record where type='TOUR_API' and origin_id='102'", Integer.class)).isEqualTo(1);
     }
 
-    @Test void failedSaveRollsBackPlaceAndSourceAndNextTargetStillSucceeds() {
+    @Test
+    @DisplayName("저장 실패 시 장소와 출처를 롤백하고 다음 저장은 성공한다")
+    void failedSaveRollsBackPlaceAndSourceAndNextTargetStillSucceeds() {
         var badTarget = new TourImportTarget("103", "테스트 시설", "수상", List.of("가".repeat(51)));
         var original = candidate("103");
         var bad = new TourImportCandidate(badTarget, original.name(), original.description(), original.address(),
@@ -101,7 +112,9 @@ class TourImportPersistenceTests {
         assertThat(writer.save(candidate("104")).status()).isEqualTo(TourImportResult.Status.CREATED);
     }
 
-    @Test void networkIsOutsideSaveTransactionAndNormalStartupDoesNotCollect() {
+    @Test
+    @DisplayName("일반 시작 시 수집하지 않고 외부 호출은 트랜잭션 밖에서 실행한다")
+    void networkIsOutsideSaveTransactionAndNormalStartupDoesNotCollect() {
         assertThat(jdbc.queryForObject("select count(*) from tour_api_import where content_id='105'", Integer.class)).isZero();
         var client = new TourApiClient(id -> {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();

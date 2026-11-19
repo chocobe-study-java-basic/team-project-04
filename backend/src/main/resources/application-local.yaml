@@ -3,8 +3,24 @@ spring:
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE}
     username: ${MYSQL_USER:outpick}
     password: ${MYSQL_PASSWORD:outpick}
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    properties:
+      "[mail.smtp.connectiontimeout]": 5000
+      "[mail.smtp.timeout]": 5000
+      "[mail.smtp.writetimeout]": 5000
 
 app:
   cors:
     allowed-origins:
       - http://localhost:3000
+  password-reset:
+    from: ${PASSWORD_RESET_FROM:no-reply@outpick.local}
+    frontend-base-url: ${PASSWORD_RESET_FRONTEND_BASE_URL:http://localhost:3000}
+    max-requests-per-hour: 3
+
+management:
+  health:
+    mail:
+      enabled: false
