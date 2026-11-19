@@ -1,5 +1,6 @@
 package com.outpick.domain.review.service;
 
+import com.outpick.domain.member.entity.MemberRole;
 import com.outpick.domain.member.service.MemberService;
 import com.outpick.domain.place.entity.PlacePublishStatus;
 import com.outpick.domain.place.exception.PlaceErrorCode;
@@ -134,7 +135,7 @@ public class ReviewService {
 
     private com.outpick.domain.member.entity.Member requireAdmin(long memberId) {
         var member = members.findActiveMember(memberId);
-        if (!"ADMIN".equals(member.getRole())) {
+        if (member.getRole() != MemberRole.ADMIN) {
             throw new BusinessException(ReviewErrorCode.ADMIN_REQUIRED.getErrorCode());
         }
         return member;
