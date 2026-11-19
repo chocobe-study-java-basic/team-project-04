@@ -1,74 +1,47 @@
-# EC2에 초기 장소 데이터 반영하기
+# EC2 초기 장소 스크립트
 
-새 DB를 만들었거나 초기 장소 데이터가 없는 EC2에서 사용한다. 배포 디렉터리의 `.env`로 장소를 수집하고, 기존 초기 검수 SQL로 공개한 뒤 저장 결과를 조회한다. 앱을 다시 배포할 때마다 실행할 필요는 없다.
+새 EC2의 파일 업로드부터 실행·브라우저 확인까지는 [배포 통합 안내](../../infra/deploy.md)를 따른다. 이 문서는 `scripts/init-places.sh`의 처리 범위와 결과를 설명한다. 로컬 개발용 명령은 [TourAPI 수집 안내](tour-api-import.md#make로-로컬-초기-장소-준비)에 있다.
 
-## 1. 실행 환경 확인하기
+## 실행 조건과 사용하는 파일
 
-EC2에서 MySQL과 최신 Backend가 정상 실행 중이어야 한다. Backend 이미지에는 `TourApiImportCommand`가 포함되어 있어야 한다. 기존 배포·HTTPS 구성은 먼저 완료한다.
+배포된 MySQL과 Backend가 정상 실행 중이고, 내려받은 Backend 이미지에 `TourApiImportCommand`가 있어야 한다. 수집에는 EC2의 배포 디렉터리 `.env`에 저장한 TourAPI 일반 인증키(Decoding)를 사용한다.
 
-EC2의 `~/outpick/.env`에 기존 DB 설정과 `TOUR_API_KEY`가 있는지 편집기로 확인한다. TourAPI의 일반 인증키(Decoding)를 사용한다. 키를 화면에 출력하거나 `.env`를 Git에 올리지 않는다.
+| 파일 | 역할 |
+| --- | --- |
+| `scripts/init-places.sh` | 접속 확인·수집·공개·조회를 순서대로 실행 |
+| `compose.deploy.yaml` | 배포 DB와 Backend 이미지·연결 설정 |
+| `compose.places.yaml` | 수집용 임시 컨테이너에 `TOUR_API_KEY` 전달 |
+| `backend/scripts/review-initial-tour-places.sql` | 기존 검수 내용과 조건에 맞는 초기 5곳만 공개 |
+| `.env` | DB 접속 설정과 TourAPI 키 |
 
-수집 프로그램은 EC2에 내려받은 Backend 이미지를 사용한다. EC2에 Java, Gradle, Node.js, Make를 추가 설치할 필요는 없다.
+전체 업로드 명령은 [배포 안내 2번](../../infra/deploy.md#2-전체-배포-파일-업로드), 실행 명령은 [8번](../../infra/deploy.md#8-초기-장소-준비)에 있다. EC2에 Node.js·Java·Make를 별도로 설치할 필요는 없다.
 
-## 2. 필요한 파일 업로드하기
+## 처리 흐름과 결과
 
-로컬 프로젝트 루트에서 실행한다. 아래 예시는 현재 EIP와 개인키 경로를 사용한다.
+1. DB 접속을 확인한다. `db_connection_ok` 값 `1`은 접속 성공이다.
+2. 기존 서비스와 별도로 일회성 Backend 컨테이너에서 초기 5곳을 수집한다.
+3. 기존 공개 SQL을 적용한다. 실행 당일에 시설을 새로 검수했다는 의미는 아니다.
+4. 수집 이력과 연결된 장소를 조회한다.
 
-```bash
-ssh -i /Users/apple/Desktop/auth-keys/aws-auth-keys/04-team-project/devcos-team05--ec2-keypair.pem \
-  ubuntu@54.116.156.207 'mkdir -p ~/outpick/scripts ~/outpick/backend/scripts'
+| 출력 | 의미 |
+| --- | --- |
+| `CREATED` | 해당 장소 신규 저장 |
+| `SKIPPED` | 이미 수집한 장소라 건너뜀 |
+| `FAILED` | 해당 장소 수집 실패 |
+| `published_this_run` | 이번 SQL 실행에서 공개한 장소 수 |
+| `publish_status = 0` | 공개 전 상태 |
+| `publish_status = 1` | 공개 상태 |
 
-scp -i /Users/apple/Desktop/auth-keys/aws-auth-keys/04-team-project/devcos-team05--ec2-keypair.pem \
-  compose.places.yaml ubuntu@54.116.156.207:~/outpick/
+이미 공개한 장소만 있다면 `published_this_run = 0`도 정상이다. 공개 SQL은 이름·주소·홈페이지 등 예상 값과 일치하는 미검수 DRAFT만 처리한다. 수정했거나 검수·공개한 장소는 건너뛴다. 검수 대상과 한계는 [초기 검수 기록](tour-api-import.md#2026-11-16-로컬-초기-공개)에 있다.
 
-scp -i /Users/apple/Desktop/auth-keys/aws-auth-keys/04-team-project/devcos-team05--ec2-keypair.pem \
-  scripts/init-places.sh ubuntu@54.116.156.207:~/outpick/scripts/
+이 작업은 다른 장소를 삭제하거나 이미 수집한 데이터를 덮어쓰지 않는다. 초기 5곳의 공개만 다루며, 후속 필터·이미지 SQL이나 DB 전체 복원은 실행하지 않는다. 앱 재배포 때마다 실행할 필요는 없다.
 
-scp -i /Users/apple/Desktop/auth-keys/aws-auth-keys/04-team-project/devcos-team05--ec2-keypair.pem \
-  backend/scripts/review-initial-tour-places.sql ubuntu@54.116.156.207:~/outpick/backend/scripts/
-```
+## 실패했을 때 확인
 
-`ssh` 명령은 서버에 필요한 디렉터리를 만든다. `scp` 명령은 파일을 복사한다. 각 원격 경로의 `:`를 포함해 입력한다. 개인키 파일명이나 EIP가 다르면 현재 값으로 변경한다.
+- 수집 실패: `FAILED` 결과를 확인한다. 키 누락·유효성, 외부 API 통신과 응답 검증 결과를 확인한다. 로그에 키를 추가 출력하지 않는다.
+- DB 접속 실패: 실행 중인 MySQL과 서버 `.env`의 DB 설정이 일치하는지 확인한다. 기존 볼륨의 비밀번호는 `.env` 수정만으로 바뀌지 않는다.
+- 클래스 없음: 최신 수집 코드가 포함된 Backend 이미지를 업로드·다운로드했는지 확인한다.
+- 공개된 장소가 없음: 수집 결과와 공개 조건을 확인한다. DRAFT를 강제로 일괄 공개하지 않는다.
+- 조회에서는 공개인데 화면에 없음: 브라우저에서 목록을 새로 조회하고 필터를 해제한다.
 
-업로드 후 서버에는 다음 파일이 있어야 한다. `.env`와 `compose.deploy.yaml`은 기존 배포 파일을 그대로 사용한다.
-
-```text
-~/outpick/
-├── .env
-├── compose.deploy.yaml
-├── compose.places.yaml
-├── scripts/
-│   └── init-places.sh
-└── backend/scripts/
-    └── review-initial-tour-places.sql
-```
-
-## 3. 초기 데이터 반영하기
-
-EC2에 SSH로 접속한 터미널에서 실행한다.
-
-```bash
-cd ~/outpick
-bash scripts/init-places.sh
-```
-
-스크립트는 다음 순서로 처리한다.
-
-1. DB에 접속해 `db_connection_ok` 값이 `1`인지 확인한다.
-2. `.env`의 키를 임시 Backend 컨테이너에 전달해 초기 5곳을 수집한다.
-3. `review-initial-tour-places.sql`로 조건에 맞는 초기 장소만 공개한다.
-4. 수집한 장소와 공개 상태를 조회한다.
-
-수집 로그의 `CREATED`는 신규 저장, `SKIPPED`는 이미 수집한 장소, `FAILED`는 수집 실패를 뜻한다. `published_this_run`은 이번 실행에서 공개한 장소 수다. 이미 공개한 장소만 있다면 `0`이어도 정상이다.
-
-기존 장소는 삭제하지 않는다. 이미 수집한 장소는 덮어쓰지 않고, 이미 공개했거나 검수 SQL의 예상 값과 다른 장소는 공개 처리에서 건너뛴다. 이 SQL은 초기 5곳에 대해 기록된 검수 내용을 적용한다. 실행 당일에 시설을 새로 검수했다는 의미는 아니다. [초기 장소 검수 범위](tour-api-import.md#2026-11-16-로컬-초기-공개)를 확인한다.
-
-중간 명령이 실패하면 이후 단계는 중단한다. 앞 단계에서 저장한 데이터는 유지된다. 오류 원인을 해결한 뒤 같은 명령을 다시 실행한다. 공개되지 않은 장소를 강제로 일괄 공개하지 않는다.
-
-수집 시 `compose.deploy.yaml`에 `compose.places.yaml`을 합쳐 실행한다. `run --rm --no-deps`는 기존 서비스에 영향을 주지 않고 일회성 컨테이너를 실행한 뒤 삭제한다. `-T`는 대화형 터미널을 만들지 않는 옵션이다. 기존 HTTPS 컨테이너를 변경하지 않으므로 `compose.https.yaml`은 이 스크립트에서 사용하지 않는다.
-
-## 4. 브라우저에서 확인하기
-
-최종 조회에서 `publish_status`를 확인한다. `0`은 공개 전 상태, `1`은 공개 상태다. 조건에 맞지 않는 장소는 `0`으로 남을 수 있다.
-
-`https://outpick.chocobe.shop`에서 장소 목록을 새로 조회한다. 공개된 장소가 목록에 표시되는지 확인한다. 필터가 적용되어 있다면 해제하고 확인한다. 이 명령은 후속 필터·이미지 SQL을 실행하지 않는다.
+중간에 실패하면 이후 단계는 실행하지 않는다. 앞 단계에서 저장한 데이터는 유지되므로 원인을 해결한 뒤 같은 스크립트를 다시 실행한다. DB나 볼륨을 삭제해 해결하지 않는다.
