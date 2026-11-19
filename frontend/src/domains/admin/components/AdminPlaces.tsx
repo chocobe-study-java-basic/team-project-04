@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { getPlaceCatalog } from '@/domains/place/api/placeApi';
 import { createPlaceDraft, getAdminPlaces, type AdminPlace } from '../api/adminApi';
@@ -45,9 +44,8 @@ export default function AdminPlaces() {
     finally { setBusy(false); }
   }
 
-  return <main className="admin-shell"><header className="admin-header"><div><p>OUTPICK · PLACES</p>
-    <h1>장소 초안 등록</h1><span>기본 정보를 저장한 뒤 검토할 수 있습니다. 저장만으로 지도에 공개되지 않습니다.</span></div>
-  <Link href="/admin/">← 대시보드</Link></header>
+  return <div><header className="admin-header"><div><p>OUTPICK · PLACES</p>
+    <h1>장소 초안 등록</h1><span>기본 정보를 저장한 뒤 검토할 수 있습니다. 저장만으로 지도에 공개되지 않습니다.</span></div></header>
   {loading ? <p role="status">장소 정보를 불러오고 있어요.</p> : <div className="admin-placeLayout">
     <form className="admin-placeForm" onSubmit={event => void submit(event)}>
       <h2>새 장소</h2><p>먼저 이름, 위치, 소개를 입력해 주세요.</p>
@@ -75,5 +73,5 @@ export default function AdminPlaces() {
         <small>#{place.id} · {place.address}</small></li>)}</ul>}
     </section>
   </div>}
-  </main>;
+  </div>;
 }

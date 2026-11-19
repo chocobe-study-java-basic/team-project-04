@@ -10,7 +10,7 @@ import PlaceSearchForm from '../PlaceSearchForm';
 import PlacePhoto, { PlacePhotoCredit } from '@/domains/place/components/PlacePhoto/PlacePhoto';
 import KakaoPlaceMap from '@/domains/place/components/KakaoPlaceMap/KakaoPlaceMap';
 import CopyPlaceLinkButton from '@/domains/place/components/CopyPlaceLinkButton/CopyPlaceLinkButton';
-import MemberProfileMenu from '@/domains/member/components/MemberProfileMenu/MemberProfileMenu';
+import ServiceHeader from '../ServiceHeader';
 import type { PlaceMapBounds, PlaceMapView } from '@/domains/place/types/kakaoMap.type';
 import { readPlaceMapBounds, readPlaceMapParams, writePlaceMapParams } from '@/domains/place/lib/placeMapParams';
 import { usePlaces } from '@/domains/place/hooks/usePlaces';
@@ -92,21 +92,21 @@ export default function PlaceExplorer() {
 
   return (
     <div className="outpick-explorer">
-      <header className="outpick-header">
-        <Link href="/" className="outpick-brand" aria-label="OUTPICK 홈">
-          OUTPICK <span>밖으로, 더 멀리</span>
-        </Link>
-        <PlaceSearchForm
-          key={`${search}:${formResetCount}`}
-          initialQuery={search}
-          onSearch={query => changeFilters({ query })}
-        />
-        <div className="outpick-headerActions">
-          <span className="outpick-previewBadge">탐색 화면 미리보기</span>
-          <CopyPlaceLinkButton label="검색 링크 복사" />
-          <MemberProfileMenu />
-        </div>
-      </header>
+      <ServiceHeader
+        search={(
+          <PlaceSearchForm
+            key={`${search}:${formResetCount}`}
+            initialQuery={search}
+            onSearch={query => changeFilters({ query })}
+          />
+        )}
+        actions={(
+          <>
+            <span className="outpick-previewBadge hidden md:inline">탐색 화면 미리보기</span>
+            <CopyPlaceLinkButton label="검색 링크 복사" />
+          </>
+        )}
+      />
 
       {searchParams.has('withdrawn') && <p className="outpick-accountNotice" role="status">회원 탈퇴가 완료되었습니다.</p>}
 
