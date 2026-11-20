@@ -1,13 +1,8 @@
-.outpick-explorer { min-height: 100vh; background: #fff; color: #16243b; font-family: Arial, 'Malgun Gothic', sans-serif; }
+.outpick-explorer { background: #fff; color: #16243b; font-family: Arial, 'Malgun Gothic', sans-serif; }
 .outpick-explorer button, .outpick-explorer select, .outpick-explorer input { font: inherit; }
 .outpick-explorer button, .outpick-explorer select { cursor: pointer; }
 .outpick-explorer button:focus-visible, .outpick-explorer a:focus-visible, .outpick-explorer input:focus-visible, .outpick-explorer select:focus-visible { outline: 3px solid #5147ff; outline-offset: 4px; }
 .outpick-accountNotice { margin: 0 36px 16px; padding: 12px 16px; border-radius: 12px; background: #e8f7ef; color: #176547; font-size: 14px; font-weight: 700; }
-.outpick-search { display: flex; align-items: center; gap: 12px; width: min(550px, 48%); margin: 0 auto; padding: 7px 10px 7px 18px; border: 1px solid transparent; border-radius: 28px; background: #f3f5f8; color: #8191a7; }
-.outpick-search:focus-within { border-color: #b8b4ff; }
-.outpick-search input { width: 100%; min-width: 0; padding: 6px 0; background: transparent; color: #16243b; outline: none; font-size: 13px; }
-.outpick-search button { flex-shrink: 0; padding: 7px 14px; border-radius: 20px; background: #fff; color: #5147ff; font-size: 12px; font-weight: 700; }
-.outpick-previewBadge { padding: 8px 11px; border-radius: 20px; background: #f3f1ff; color: #655bba; font-size: 11px; white-space: nowrap; }
 .outpick-toolbar { display: flex; justify-content: space-between; gap: 20px; padding: 0 36px; border-bottom: 1px solid #e9edf3; }
 .outpick-categories { display: flex; gap: 25px; overflow-x: auto; }
 .outpick-categories button { flex-shrink: 0; padding: 17px 0; border-bottom: 2px solid transparent; color: #617088; font-size: 13px; font-weight: 700; }
@@ -62,7 +57,6 @@
 @media (min-width: 1600px) { .outpick-results { padding: 44px 56px; } .outpick-cards { gap: 28px 22px; } }
 @media (max-width: 1100px) { .outpick-toolbar { flex-wrap: wrap; gap: 0; padding: 0 24px; } .outpick-categories { gap: 22px; } .outpick-filters { padding-bottom: 12px; } .outpick-results { padding: 28px 24px; } .outpick-cardBody { padding: 12px; } }
 @media (max-width: 767px) {
-  .outpick-search { order: 3; width: 100%; }
   .outpick-toolbar { display: block; padding: 0 20px; }
   .outpick-categories { gap: 24px; }
   .outpick-filters { gap: 6px; padding-top: 12px; }

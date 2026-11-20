@@ -3,8 +3,7 @@
 import { CircleUserRound } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useId, useRef, useState } from 'react';
-import { currentMember } from '../../api/memberApi';
-import { ApiError } from '@/shared/lib/http/apiError';
+import { useCurrentMember } from '../../hooks/useCurrentMember';
 import { profileMenuItems, type ProfileMenuAudience } from './profileMenuItems';
 
 const profileLinkClassName = 'block hover:bg-[#f3f1ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5147ff]';
@@ -13,7 +12,9 @@ type MemberStatus = 'checking' | 'error' | ProfileMenuAudience;
 
 /** 현재 회원의 로그인 상태와 역할에 맞춰 헤더의 프로필 링크를 표시합니다. */
 export default function MemberProfileMenu() {
-  const [memberStatus, setMemberStatus] = useState<MemberStatus>('checking');
+  const { data: member, isPending, isError } = useCurrentMember();
+  const memberStatus: MemberStatus = isPending ? 'checking' : isError ? 'error'
+    : member ? (member.role === 'ADMIN' ? 'admin' : 'member') : 'guest';
   const [isOpen, setIsOpen] = useState(false);
   const menuId = useId();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -21,19 +22,6 @@ export default function MemberProfileMenu() {
   const visibleMenuItems = memberStatus === 'checking' || memberStatus === 'error'
     ? []
     : profileMenuItems.filter(item => item.visibleTo.includes(memberStatus));
-
-  useEffect(() => {
-    let active = true;
-    currentMember().then(member => {
-      if (active) setMemberStatus(member.role === 'ADMIN' ? 'admin' : 'member');
-    })
-      .catch(cause => {
-        if (!active) return;
-        const signedOut = cause instanceof ApiError && cause.details.kind === 'http' && cause.details.status === 401;
-        setMemberStatus(signedOut ? 'guest' : 'error');
-      });
-    return () => { active = false; };
-  }, []);
 
   useEffect(() => {
     if (!isOpen) return;

@@ -1,15 +1,16 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useContext, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { logout, withdraw } from '@/domains/member/api/memberApi';
 import { ApiError } from '@/shared/lib/http/apiError';
-import { MypageMemberContext } from './MypageMemberContext';
+import { useCurrentMember } from '@/domains/member/hooks/useCurrentMember';
+import { setCurrentMember } from '@/domains/member/queries/currentMemberQuery';
 
 export default function MypageAccount() {
-  const member = useContext(MypageMemberContext);
-  const router = useRouter();
+  const { data: member } = useCurrentMember();
+  const queryClient = useQueryClient();
   const withdrawalDialog = useRef<HTMLDialogElement>(null);
   const [busy, setBusy] = useState(false);
   const [password, setPassword] = useState('');
@@ -23,7 +24,9 @@ export default function MypageAccount() {
     setLogoutError('');
     try {
       await logout();
-      router.replace('/');
+      await setCurrentMember(queryClient, null);
+      // 세션 종료 후 공개 화면을 새로 열어 보호 화면의 로그인 이동과 경쟁하지 않도록 합니다.
+      window.location.replace('/');
     } catch {
       setLogoutError('로그아웃하지 못했습니다. 다시 시도해 주세요.');
     } finally {
@@ -40,7 +43,8 @@ export default function MypageAccount() {
     try {
       await withdraw(password);
       withdrawalDialog.current?.close();
-      router.replace('/?withdrawn=1');
+      await setCurrentMember(queryClient, null);
+      window.location.replace('/?withdrawn=1');
     } catch (cause) {
       setWithdrawalError(cause instanceof ApiError && cause.details.kind === 'http' && cause.details.code === 'WITHDRAWAL_PASSWORD_MISMATCH'
         ? '현재 비밀번호가 올바르지 않습니다.'

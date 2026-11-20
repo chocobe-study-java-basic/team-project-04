@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { confirmPasswordReset, login, requestPasswordReset, signup, validatePasswordReset } from '../api/memberApi';
+import { setCurrentMember } from '../queries/currentMemberQuery';
 import AccountFrame from './AccountFrame';
 import FloatingField from './FloatingField';
 
@@ -27,6 +29,7 @@ function Submit({ busy, success = false, children }: { busy: boolean; success?: 
 
 export function LoginScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const loginParams = useSearchParams();
   const destination = loginParams.get('next') === '/mypage/' ? '/mypage/'
     : loginParams.get('next') === '/admin/' ? '/admin/' : '/';
@@ -39,9 +42,13 @@ export function LoginScreen() {
     : loginParams.has('signup') ? '회원가입이 완료되었습니다. 로그인해 주세요.' : '';
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError('');
-    try { const member = await login({ email, password }); setSuccess(true);
+    try {
+      const member = await login({ email, password });
+      await setCurrentMember(queryClient, member);
+      setSuccess(true);
       const target = destination === '/mypage/' ? destination : member.role === 'ADMIN' ? '/admin/' : destination;
-      window.setTimeout(() => router.push(target), 420); }
+      window.setTimeout(() => router.push(target), 420);
+    }
     catch (cause) { setError(errorText(cause)); }
     finally { setBusy(false); }
   }

@@ -1,17 +1,25 @@
 // @vitest-environment jsdom
 
 import '../../../../../tests/setup-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { createQueryClient } from '@/shared/lib/query/queryClient';
 import { render, screen } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { server } from '../../../../../tests/mocks/server';
+import MemberProfileMenu from '@/domains/member/components/MemberProfileMenu/MemberProfileMenu';
 import AdminAccess from './AdminAccess';
 
 const memberUrl = 'https://api.outpick.test/api/v1/members/me';
 const adminHeading = '관리자 페이지 본문';
 
 function renderAdminPage() {
-  render(<AdminAccess><h1>{adminHeading}</h1></AdminAccess>);
+  render(
+    <QueryClientProvider client={createQueryClient()}>
+      <AdminAccess><h1>{adminHeading}</h1></AdminAccess>
+    </QueryClientProvider>
+  );
 }
 
 describe('관리자 공통 접근 확인', () => {
@@ -24,6 +32,27 @@ describe('관리자 공통 접근 확인', () => {
     expect(screen.queryByRole('heading', { name: adminHeading })).toBeNull();
     expect(await screen.findByRole('heading', { name: adminHeading })).toBeTruthy();
     expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('프로필 메뉴와 관리자 접근 확인이 회원 조회 요청을 공유한다', async () => {
+    let requestCount = 0;
+    server.use(http.get(memberUrl, () => {
+      requestCount++;
+      return HttpResponse.json({ id: 1, role: 'ADMIN' });
+    }));
+    const user = userEvent.setup();
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <MemberProfileMenu />
+        <AdminAccess><h1>{adminHeading}</h1></AdminAccess>
+      </QueryClientProvider>
+    );
+
+    await user.click(screen.getByRole('button', { name: '프로필 메뉴' }));
+
+    expect(await screen.findByRole('link', { name: '관리자 화면' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: adminHeading })).toBeTruthy();
+    expect(requestCount).toBe(1);
   });
 
   it('일반 회원에게 본문 대신 운영자 전용 안내와 장소 탐색 링크를 표시한다', async () => {

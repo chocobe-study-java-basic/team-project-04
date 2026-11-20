@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 
 import '../../../../../tests/setup-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { createQueryClient } from '@/shared/lib/query/queryClient';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -10,11 +12,20 @@ import MemberProfileMenu from './MemberProfileMenu';
 
 const memberUrl = 'https://api.outpick.test/api/v1/members/me';
 
+function renderMenu(children?: React.ReactNode) {
+  render(
+    <QueryClientProvider client={createQueryClient()}>
+      <MemberProfileMenu />
+      {children}
+    </QueryClientProvider>
+  );
+}
+
 describe('탐색 화면의 프로필 메뉴', () => {
   it('운영자에게 마이페이지와 관리자 화면 링크를 표시한다', async () => {
     server.use(http.get(memberUrl, () => HttpResponse.json({ id: 1, role: 'ADMIN' })));
     const user = userEvent.setup();
-    render(<MemberProfileMenu />);
+    renderMenu();
 
     await user.click(screen.getByRole('button', { name: '프로필 메뉴' }));
 
@@ -25,7 +36,7 @@ describe('탐색 화면의 프로필 메뉴', () => {
   it('일반 회원에게 마이페이지를 표시하고 관리자 화면은 숨긴다', async () => {
     server.use(http.get(memberUrl, () => HttpResponse.json({ id: 2, role: 'USER' })));
     const user = userEvent.setup();
-    render(<MemberProfileMenu />);
+    renderMenu();
 
     await user.click(screen.getByRole('button', { name: '프로필 메뉴' }));
 
@@ -36,7 +47,7 @@ describe('탐색 화면의 프로필 메뉴', () => {
   it('회원 조회가 401이면 로그인 링크를 표시한다', async () => {
     server.use(http.get(memberUrl, () => new HttpResponse(null, { status: 401 })));
     const user = userEvent.setup();
-    render(<MemberProfileMenu />);
+    renderMenu();
 
     await user.click(screen.getByRole('button', { name: '프로필 메뉴' }));
 
@@ -47,7 +58,7 @@ describe('탐색 화면의 프로필 메뉴', () => {
   it('회원 조회가 실패하면 오류를 안내한다', async () => {
     server.use(http.get(memberUrl, () => HttpResponse.error()));
     const user = userEvent.setup();
-    render(<MemberProfileMenu />);
+    renderMenu();
 
     await user.click(screen.getByRole('button', { name: '프로필 메뉴' }));
 
@@ -58,7 +69,7 @@ describe('탐색 화면의 프로필 메뉴', () => {
   it('키보드로 링크에 이동하고 Escape로 닫으면 프로필 버튼으로 돌아온다', async () => {
     server.use(http.get(memberUrl, () => HttpResponse.json({ id: 1, role: 'ADMIN' })));
     const user = userEvent.setup();
-    render(<MemberProfileMenu />);
+    renderMenu();
     const button = screen.getByRole('button', { name: '프로필 메뉴' });
 
     await user.tab();
@@ -78,7 +89,7 @@ describe('탐색 화면의 프로필 메뉴', () => {
   it('메뉴 바깥을 클릭하면 메뉴를 닫는다', async () => {
     server.use(http.get(memberUrl, () => new HttpResponse(null, { status: 401 })));
     const user = userEvent.setup();
-    render(<><MemberProfileMenu /><button type="button">메뉴 바깥</button></>);
+    renderMenu(<button type="button">메뉴 바깥</button>);
     const button = screen.getByRole('button', { name: '프로필 메뉴' });
 
     await user.click(button);

@@ -291,6 +291,10 @@ src/
 
 개별 Hook에서 정책을 재정의할 수 있다. 최신 캐시가 있어도 사용자가 누르는 ‘다시 조회’는 재요청한다. Mutation·데이터 변경 후 캐시 무효화 예시는 이번 범위에 포함하지 않는다.
 
+### 현재 회원 조회
+
+서비스 헤더, 마이페이지, 관리자 접근 확인은 `useCurrentMember()`로 같은 현재 회원 캐시를 읽는다. `/api/v1/members/me`의 401은 비로그인으로 처리하고, 네트워크·서버 오류는 화면에 안내한다. 로그인 성공 시 서버가 반환한 회원 정보로 캐시를 갱신한다. 로그아웃이나 탈퇴에 성공하면 진행 중인 조회를 취소하고 캐시를 비로그인 상태로 바꾼 뒤 공개 화면으로 이동한다. [회원 조회 Hook](src/domains/member/hooks/useCurrentMember.ts) · [회원 쿼리와 캐시 갱신](src/domains/member/queries/currentMemberQuery.ts)
+
 ### 로컬 화면 확인
 
 Backend와 MySQL을 준비하고 API 주소를 확인한 뒤 Frontend를 실행한다. `/main-example`에서 ID 1은 성공 응답, ID 2는 업무 오류를 조회한다. 로딩·성공·오류 표시와 ‘다시 조회’를 확인한다. 재조회에 실패해도 기존 데이터가 있다면 안내와 함께 유지한다.
@@ -343,14 +347,22 @@ npm run lint:fix
 
 ## 라우팅 및 디렉터리 구조
 
-다음은 구현한 라우팅·레이아웃 구조와 후속 기능의 배치 예시다. `/` 진입 화면, 세 Route Group의 레이아웃·예시 페이지·전용 컴포넌트, `shared/components/layout/`은 구현했다. `_providers/`와 `shared/lib/query/`도 구현했다. 페이지 전용 `_hooks/`, `domains/place/`, Zustand 파일은 향후 배치 예시다. 공통 HTTP 코드와 `domains/example/`은 HTTP 통신·서버 상태 관리 절에 설명한다. 실제 코드가 필요할 때 파일을 추가하고 빈 디렉터리는 미리 만들지 않는다.
+다음은 구현한 라우팅·레이아웃 구조와 후속 기능의 배치 예시다. 서비스 화면은 `(service)`에 모으고, 레이아웃 예시는 별도의 Route Group에 둔다. `_providers/`와 `shared/lib/query/`도 구현했다. 페이지 전용 `_hooks/`, `domains/place/`, Zustand 파일은 향후 배치 예시다. 공통 HTTP 코드와 `domains/example/`은 HTTP 통신·서버 상태 관리 절에 설명한다. 실제 코드가 필요할 때 파일을 추가하고 빈 디렉터리는 미리 만들지 않는다.
 
 ```text
 frontend/src/
 ├── app/
 │   ├── layout.tsx                     # html·body·공통 Provider 연결
 │   ├── globals.css
-│   ├── page.tsx                       # 예시 페이지 진입 화면
+│   ├── (service)/
+│   │   ├── layout.tsx                 # 검색·회원 영역 공통 헤더
+│   │   ├── page.tsx                   # 장소 탐색 /
+│   │   └── (account)/
+│   │       ├── layout.tsx             # 공통 사이드바와 본문
+│   │       ├── _components/AccountSidebar/
+│   │       ├── mypage/                # /mypage/와 하위 화면
+│   │       └── admin/                 # /admin/와 하위 화면
+│   │           └── layout.tsx         # 운영자 접근 확인
 │   ├── _providers/
 │   │   └── QueryProvider.tsx           # 공통 서버 상태 설정
 │   ├── (minimal)/
@@ -449,7 +461,6 @@ Query Key는 각 Hook에 문자열로 흩어 놓지 않고 도메인의 `queries
 
 | 예시 URL | 레이아웃 |
 |---|---|
-| `/` | 예시 페이지로 이동하는 진입 화면 |
 | `/minimal-example/` | 본문만 표시 |
 | `/main-example/` | 일반 헤더 + 사이드바 |
 | `/admin-example/` | 관리자 헤더 + 관리자 사이드바 |
@@ -460,22 +471,22 @@ Axios 인스턴스와 Query Provider·Query Client·example Query Key는 구현�
 
 ### 예시 확인과 새 페이지 추가
 
-`make frontend-dev`로 실행한 뒤 `/`에서 각 예시 링크로 이동한다. 각 주소로 직접 접속하거나 새로고침하고, 예시 목록으로 돌아오는 링크도 확인한다. 일반·관리자 사이드바는 넓은 화면에서는 왼쪽에, 좁은 화면에서는 본문 위에 배치한다.
+`make frontend-dev`로 실행한 뒤 표에 있는 예시 주소를 연다. 각 주소로 직접 접속하거나 새로고침하고, 예시 목록으로 돌아오는 링크도 확인한다. 일반·관리자 사이드바는 넓은 화면에서는 왼쪽에, 좁은 화면에서는 본문 위에 배치한다.
 
 새 페이지는 원하는 레이아웃의 Route Group 아래에 `page.tsx`를 추가한다. 페이지 전용 컴포넌트는 해당 경로의 `_components/`에 두고, 상위 그룹의 `layout.tsx`가 적용하는 헤더·사이드바를 페이지에서 다시 작성하지 않는다.
 
-이번 구현은 ESLint·타입 검사를 통과했다. 개발 서버의 네 경로에서 HTTP 200, 레이아웃별 헤더·사이드바 포함 여부, 진입·복귀 링크를 HTML로 확인했다. 레이아웃 작업 당시 정적 빌드는 생략했지만, 이후 정적 배포 검증에서 빌드와 사용자 브라우저의 링크 이동·뒤로 가기·새로고침·API 동작 확인을 마쳤다. 반응형 세부 디자인 검수는 별도다.
+이번 구현은 ESLint·타입 검사를 통과했다. 레이아웃 예시를 만들 당시 개발 서버에서 HTTP 200, 레이아웃별 헤더·사이드바 포함 여부, 진입·복귀 링크를 HTML로 확인했다. 레이아웃 작업 당시 정적 빌드는 생략했지만, 이후 정적 배포 검증에서 빌드와 사용자 브라우저의 링크 이동·뒤로 가기·새로고침·API 동작 확인을 마쳤다. 반응형 세부 디자인 검수는 별도다.
 
 ### 관리자 페이지 추가
 
-1. `src/app/admin/` 아래에 페이지 디렉터리를 만들고 `page.tsx`에서 화면을 배치한다. 예를 들어 `src/app/admin/review-reports/page.tsx`는 `/admin/review-reports/`의 본문을 구성한다. [후기 신고 페이지](src/app/admin/review-reports/page.tsx)
-2. `src/app/admin/layout.tsx`가 하위 페이지에 운영자 접근 확인(`AdminAccess`), 공통 헤더, 사이드바, 본문 영역을 적용한다. 새 `page.tsx`에는 페이지 본문만 넣는다. 관리자 API의 권한은 백엔드에서 검사한다. [관리자 공통 레이아웃](src/app/admin/layout.tsx)
-3. 사이드바에 표시할 관리자 페이지는 `accountSidebarItems.ts`의 `adminNavigationItems`에 `label`, `href`, `Icon`을 등록한다. 후기 신고 메뉴는 `/admin/review-reports/`와 `lucide-react`의 `MessageSquareWarning`을 사용한다. 일반 회원과 운영자에게 모두 표시할 마이페이지 메뉴는 같은 파일의 `commonNavigationItems`에 둔다. [사이드바 메뉴 목록](src/app/_components/AccountSidebar/accountSidebarItems.ts)
+1. `src/app/(service)/(account)/admin/` 아래에 페이지 디렉터리를 만들고 `page.tsx`에서 화면을 배치한다. 예를 들어 `src/app/(service)/(account)/admin/review-reports/page.tsx`는 `/admin/review-reports/`의 본문을 구성한다. [후기 신고 페이지](<src/app/(service)/(account)/admin/review-reports/page.tsx>)
+2. `src/app/(service)/(account)/admin/layout.tsx`는 하위 페이지에 운영자 접근 확인(`AdminAccess`)을 적용한다. 헤더는 `(service)/layout.tsx`가, 사이드바와 본문 영역은 `(account)/layout.tsx`가 담당한다. 새 `page.tsx`에는 페이지 본문만 넣는다. 관리자 API의 권한은 백엔드에서 검사한다. [관리자 접근 확인](<src/app/(service)/(account)/admin/layout.tsx>)
+3. 사이드바에 표시할 관리자 페이지는 `accountSidebarItems.ts`의 `adminNavigationItems`에 `label`, `href`, `Icon`을 등록한다. 후기 신고 메뉴는 `/admin/review-reports/`와 `lucide-react`의 `MessageSquareWarning`을 사용한다. 일반 회원과 운영자에게 모두 표시할 마이페이지 메뉴는 같은 파일의 `commonNavigationItems`에 둔다. [사이드바 메뉴 목록](<src/app/(service)/(account)/_components/AccountSidebar/accountSidebarItems.ts>)
 4. 해당 페이지에서만 사용하는 조합 UI는 라우트의 `_components/`에 둔다. 도메인 기능은 담당 도메인에 둔다. 후기 신고 화면은 `src/domains/review/components/ReviewReportsAdmin/`에 컴포넌트와 스타일을 함께 두고, 신고 조회·처리 요청은 `src/domains/review/api/reviewApi.ts`에 둔다. [후기 신고 컴포넌트](src/domains/review/components/ReviewReportsAdmin/) · [후기 API](src/domains/review/api/reviewApi.ts)
 
 운영자로 로그인해 사이드바에서 새 메뉴를 선택한다. 본문과 현재 메뉴 표시를 확인하고, 같은 주소에 직접 접속하거나 새로고침해도 페이지가 열리는지 확인한다.
 
-마이페이지와 관리자 화면은 `AccountAreaLayout`에서 공통 헤더와 사이드바를 사용한다. 마이페이지에 화면을 추가할 때는 `src/app/mypage/` 아래에 `page.tsx`를 두고, 메뉴에 표시할 경우 공통 목록에 등록한다. 운영자는 두 화면에서 공통 메뉴 아래에 관리자 메뉴를 함께 본다. [공통 레이아웃](src/app/_components/AccountAreaLayout.tsx) · [마이페이지 레이아웃](src/app/mypage/layout.tsx)
+마이페이지에 화면을 추가할 때는 `src/app/(service)/(account)/mypage/` 아래에 `page.tsx`를 두고, 메뉴에 표시할 경우 공통 목록에 등록한다. 운영자는 두 화면에서 공통 메뉴 아래에 관리자 메뉴를 함께 본다. [서비스 레이아웃](<src/app/(service)/layout.tsx>) · [회원 공통 레이아웃](<src/app/(service)/(account)/layout.tsx>) · [마이페이지 로그인 확인](<src/app/(service)/(account)/mypage/layout.tsx>)
 
 ### 장소 상세 URL과 메타정보
 

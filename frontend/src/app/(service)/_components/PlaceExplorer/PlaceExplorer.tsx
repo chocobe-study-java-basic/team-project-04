@@ -4,13 +4,9 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import type { MouseEvent } from 'react';
-import type { PlaceSearchFilters } from './place-list.type';
-import { defaultFilters, readPlaceSearchParams, seasons, writePlaceSearchParams } from './placeSearchParams';
-import PlaceSearchForm from '../PlaceSearchForm';
+import { changePlaceSearchFilters, defaultFilters, placeSearchFormId, readPlaceSearchParams, seasons } from './placeSearchParams';
 import PlacePhoto, { PlacePhotoCredit } from '@/domains/place/components/PlacePhoto/PlacePhoto';
 import KakaoPlaceMap from '@/domains/place/components/KakaoPlaceMap/KakaoPlaceMap';
-import CopyPlaceLinkButton from '@/domains/place/components/CopyPlaceLinkButton/CopyPlaceLinkButton';
-import ServiceHeader from '../ServiceHeader';
 import type { PlaceMapBounds, PlaceMapView } from '@/domains/place/types/kakaoMap.type';
 import { readPlaceMapBounds, readPlaceMapParams, writePlaceMapParams } from '@/domains/place/lib/placeMapParams';
 import { usePlaces } from '@/domains/place/hooks/usePlaces';
@@ -20,7 +16,6 @@ import './PlaceExplorer.css';
 export default function PlaceExplorer() {
   const searchParams = useSearchParams();
   const { query: search, category, region, season, environment, sort } = readPlaceSearchParams(searchParams);
-  const [formResetCount, setFormResetCount] = useState(0);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [mobileMap, setMobileMap] = useState(false);
   const mapBounds = useMemo(() => readPlaceMapBounds(searchParams), [searchParams]);
@@ -65,18 +60,6 @@ export default function PlaceExplorer() {
     }
   }
 
-  function changeFilters(changes: Partial<PlaceSearchFilters>) {
-    const params = writePlaceSearchParams(new URLSearchParams(window.location.search), changes);
-    params.delete('page');
-    const queryString = params.toString();
-    const nextUrl = `${window.location.pathname}${queryString ? `?${queryString}` : ''}${window.location.hash}`;
-    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-    if (nextUrl !== currentUrl) {
-      // Next.js가 History API 변경을 useSearchParams와 동기화합니다. 스크롤은 유지합니다.
-      window.history.pushState(null, '', nextUrl);
-    }
-  }
-
   function changePage(nextPage: number) {
     const params = new URLSearchParams(window.location.search);
     if (nextPage === 0) params.delete('page');
@@ -85,47 +68,30 @@ export default function PlaceExplorer() {
   }
 
   function resetFilters() {
-    changeFilters(defaultFilters);
-    setFormResetCount(count => count + 1);
+    changePlaceSearchFilters(defaultFilters);
     setSelectedId(null);
   }
 
   return (
     <div className="outpick-explorer">
-      <ServiceHeader
-        search={(
-          <PlaceSearchForm
-            key={`${search}:${formResetCount}`}
-            initialQuery={search}
-            onSearch={query => changeFilters({ query })}
-          />
-        )}
-        actions={(
-          <>
-            <span className="outpick-previewBadge hidden md:inline">탐색 화면 미리보기</span>
-            <CopyPlaceLinkButton label="검색 링크 복사" />
-          </>
-        )}
-      />
-
       {searchParams.has('withdrawn') && <p className="outpick-accountNotice" role="status">회원 탈퇴가 완료되었습니다.</p>}
 
       <div className="outpick-toolbar">
         <nav aria-label="활동 카테고리" className="outpick-categories">
           {categories.map(item => (
-            <button key={item} type="button" aria-pressed={category === item} onClick={() => changeFilters({ category: item })}>{item}</button>
+            <button key={item} type="button" aria-pressed={category === item} onClick={() => changePlaceSearchFilters({ category: item })}>{item}</button>
           ))}
         </nav>
         <div className="outpick-filters">
-          <label><span className="outpick-srOnly">지역</span><select value={region} onChange={event => changeFilters({ region: event.target.value })}>
+          <label><span className="outpick-srOnly">지역</span><select value={region} onChange={event => changePlaceSearchFilters({ region: event.target.value })}>
             <option value="">지역 전체</option>
             {region && !catalog.data?.regions.some(item => item.name === region) && <option value={region}>{region} (미제공)</option>}
             {catalog.data?.regions.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
           </select></label>
-          <label><span className="outpick-srOnly">시즌</span><select value={season} onChange={event => changeFilters({ season: event.target.value })}>
+          <label><span className="outpick-srOnly">시즌</span><select value={season} onChange={event => changePlaceSearchFilters({ season: event.target.value })}>
             <option value="">시즌 전체</option>{seasons.map(item => <option key={item}>{item}</option>)}
           </select></label>
-          <label><span className="outpick-srOnly">실내외</span><select value={environment} onChange={event => changeFilters({ environment: event.target.value })}>
+          <label><span className="outpick-srOnly">실내외</span><select value={environment} onChange={event => changePlaceSearchFilters({ environment: event.target.value })}>
             <option value="">실내외 전체</option><option>실내</option><option>실외</option>
           </select></label>
         </div>
@@ -140,10 +106,10 @@ export default function PlaceExplorer() {
           </div>
           <div className="outpick-resultToolbar">
             <p role="status">{loading ? '장소를 불러오고 있어요' : failed ? '조회 실패' : <>검색 결과 <strong>{placeQuery.data?.totalElements ?? 0}곳</strong></>}</p>
-            <label className="outpick-sort"><span className="outpick-srOnly">정렬</span><select value={sort} onChange={event => changeFilters({ sort: event.target.value })}>
+            <label className="outpick-sort"><span className="outpick-srOnly">정렬</span><select value={sort} onChange={event => changePlaceSearchFilters({ sort: event.target.value })}>
               <option value="name">이름순</option><option value="name-desc">이름 역순</option>
             </select></label>
-            <button type="button" className="outpick-reset" onClick={resetFilters}>필터 초기화</button>
+            <button type="reset" form={placeSearchFormId} className="outpick-reset" onClick={resetFilters}>필터 초기화</button>
           </div>
           {places.some(place => place.name?.startsWith('[데모]')) && <p className="outpick-sampleNotice">[데모] 표시는 가상 장소이며 실제 시설 정보가 아닙니다.</p>}
           <p className="outpick-sampleNotice">지도를 이동하면 자동 검색해요. 지도에는 현재 페이지의 장소만 표시돼요.</p>
@@ -175,7 +141,7 @@ export default function PlaceExplorer() {
               <span aria-hidden="true">⌕</span>
               <h2>조건에 맞는 장소가 없어요</h2>
               <p>지도를 이동·축소하거나 검색 조건을 바꿔 보세요.</p>
-              <button type="button" onClick={resetFilters}>검색 필터 초기화</button>
+              <button type="reset" form={placeSearchFormId} onClick={resetFilters}>검색 필터 초기화</button>
             </div>
           )}
           {!loading && !failed && (page > 0 || (placeQuery.data?.totalElements ?? 0) > 20) && <nav className="outpick-pagination" aria-label="검색 결과 페이지">

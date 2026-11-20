@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import '../../../../tests/setup-dom';
+import '../../../../../../tests/setup-dom';
 import { render, screen, within } from '@testing-library/react';
 import { usePathname } from 'next/navigation';
 import { describe, expect, it, vi } from 'vitest';

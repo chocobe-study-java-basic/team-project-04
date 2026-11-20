@@ -48,3 +48,15 @@ export function writePlaceSearchParams(current: URLSearchParams, changes: Partia
   }
   return params;
 }
+
+export const placeSearchFormId = 'place-search-form';
+
+/** 필터를 바꾸면 첫 페이지로 돌아가며 현재 스크롤 위치를 유지합니다. */
+export function changePlaceSearchFilters(changes: Partial<PlaceSearchFilters>) {
+  const { pathname, search, hash } = window.location;
+  const params = writePlaceSearchParams(new URLSearchParams(search), changes);
+  params.delete('page');
+  const query = params.toString();
+  const nextUrl = `${pathname}${query ? `?${query}` : ''}${hash}`;
+  if (nextUrl !== `${pathname}${search}${hash}`) window.history.pushState(null, '', nextUrl);
+}

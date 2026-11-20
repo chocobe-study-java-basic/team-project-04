@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
-import '../../../../tests/setup-dom';
+import '../../../../../tests/setup-dom';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { server } from '../../../../tests/mocks/server';
-import QueryProvider from '../../_providers/QueryProvider';
+import { server } from '../../../../../tests/mocks/server';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { createQueryClient } from '@/shared/lib/query/queryClient';
+import ServiceHeader from '../ServiceHeader';
 import PlaceExplorer from './PlaceExplorer';
 import type { PlaceMapBounds, PlaceMapItem, PlaceMapView } from '@/domains/place/types/kakaoMap.type';
 
@@ -22,7 +24,10 @@ vi.mock('next/navigation', async () => {
     window.addEventListener('popstate', listener);
     return () => window.removeEventListener('popstate', listener);
   }
-  return { useSearchParams: () => new URLSearchParams(useSyncExternalStore(subscribe, () => window.location.search, () => '')) };
+  return {
+    usePathname: () => window.location.pathname,
+    useSearchParams: () => new URLSearchParams(useSyncExternalStore(subscribe, () => window.location.search, () => '')),
+  };
 });
 const base = 'https://api.outpick.test/api/v1/places';
 const rows = [
@@ -30,7 +35,12 @@ const rows = [
   { id: 2, name: '파도 서프 스테이션', address: null, latitude: null, longitude: null },
 ];
 let requests: URL[];
-const mount = () => render(<QueryProvider><PlaceExplorer /></QueryProvider>);
+const mount = () => render(
+  <QueryClientProvider client={createQueryClient()}>
+    <ServiceHeader />
+    <PlaceExplorer />
+  </QueryClientProvider>
+);
 beforeEach(() => {
   sessionStorage.clear();
   window.history.replaceState(null, '', '/');
@@ -43,6 +53,7 @@ beforeEach(() => {
   }
   requests = [];
   server.use(
+    http.get('https://api.outpick.test/api/v1/members/me', () => new HttpResponse(null, { status: 401 })),
     http.get(base + '/filters', () => HttpResponse.json({
       regions: [{ id: 101, name: '강원' }, { id: 201, name: '경기' }],
       categories: [{ id: 11, name: '스키·보드', activityTypeIds: [51, 52] }, { id: 12, name: '수상', activityTypeIds: [61] }],
@@ -112,6 +123,18 @@ describe('DB 장소 목록 화면', () => {
     expect(await screen.findByRole('heading', { name: '조건에 맞는 장소가 없어요' })).toBeTruthy();
     await user.click(screen.getByRole('button', { name: '검색 필터 초기화' }));
     expect(await screen.findByRole('heading', { name: '눈마루 리조트' })).toBeTruthy();
+    expect(window.location.search).toBe('');
+  });
+  it('기본 필터에서 초기화해도 제출하지 않은 검색어를 지운다', async () => {
+    const user = userEvent.setup();
+    mount();
+    const input = screen.getByRole<HTMLInputElement>('textbox', { name: '장소명 검색' });
+    await screen.findByRole('heading', { name: '눈마루 리조트' });
+    await user.type(input, '미제출 검색어');
+
+    await user.click(screen.getByRole('button', { name: '필터 초기화' }));
+
+    expect(input.value).toBe('');
     expect(window.location.search).toBe('');
   });
   it('페이지를 URL에 저장하고 필터를 변경하면 첫 페이지로 돌아간다', async () => {
