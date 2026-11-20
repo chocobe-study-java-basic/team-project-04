@@ -9,8 +9,8 @@ export type PlaceDraftInput = { regionId: number; name: string; address: string;
 export async function getAdminSummary(signal?: AbortSignal): Promise<AdminSummary> {
   return (await apiClient.get<AdminSummary>('/api/v1/admin/dashboard', { signal })).data;
 }
-export async function getAdminPlaces(): Promise<AdminPlace[]> {
-  return (await apiClient.get<AdminPlace[]>('/api/v1/admin/places')).data;
+export async function getAdminPlaces(signal?: AbortSignal): Promise<AdminPlace[]> {
+  return (await apiClient.get<AdminPlace[]>('/api/v1/admin/places', { signal })).data;
 }
 export async function createPlaceDraft(input: PlaceDraftInput): Promise<AdminPlace> {
   return (await apiClient.post<AdminPlace>('/api/v1/admin/places', input,
