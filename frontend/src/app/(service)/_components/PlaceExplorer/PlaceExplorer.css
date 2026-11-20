@@ -1,4 +1,4 @@
-.outpick-explorer { background: #fff; color: #16243b; font-family: Arial, 'Malgun Gothic', sans-serif; }
+.outpick-explorer { background: #fff; color: #16243b; }
 .outpick-explorer button, .outpick-explorer select, .outpick-explorer input { font: inherit; }
 .outpick-explorer button, .outpick-explorer select { cursor: pointer; }
 .outpick-explorer button:focus-visible, .outpick-explorer a:focus-visible, .outpick-explorer input:focus-visible, .outpick-explorer select:focus-visible { outline: 3px solid #5147ff; outline-offset: 4px; }

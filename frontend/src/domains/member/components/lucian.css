@@ -79,7 +79,6 @@
 
 .ux,.ux *,.ux *::before,.ux *::after{box-sizing:border-box}
 .ux{
-  font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Segoe UI",Roboto,"Noto Sans KR",sans-serif;
   color:var(--ux-ink);-webkit-font-smoothing:antialiased;letter-spacing:-.01em;
   -webkit-tap-highlight-color:transparent;
   word-break:keep-all;overflow-wrap:break-word;

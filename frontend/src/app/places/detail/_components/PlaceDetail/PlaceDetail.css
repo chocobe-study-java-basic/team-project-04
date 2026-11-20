@@ -1,4 +1,4 @@
-.outpick-detail { min-height: 100vh; background: #fff; color: #16243b; font-family: Arial, 'Malgun Gothic', sans-serif; }
+.outpick-detail { min-height: 100vh; background: #fff; color: #16243b; }
 .outpick-detail a:focus-visible { outline: 3px solid #5147ff; outline-offset: 4px; }
 .outpick-detailHeader { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px 36px; border-bottom: 1px solid #e9edf3; }
 .outpick-detailBrand { color: #5147ff; font-size: 25px; font-weight: 800; letter-spacing: -1px; text-decoration: none; }
