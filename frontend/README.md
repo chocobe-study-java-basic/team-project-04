@@ -6,7 +6,7 @@
 
 Next.js + TypeScript + Tailwind CSS 기반으로 정적 파일을 빌드한다. HTTP 통신은 Axios, 서버 상태 관리는 TanStack Query를 사용한다. 공유 클라이언트 상태 관리는 Zustand를 사용할 예정이다.
 
-현재는 개발 환경·레이아웃 예시와 TanStack Query 기반 조회 화면을 구성했다. Zustand 설치·Store 구현은 공유할 UI 상태가 확정될 때까지 보류한다.
+현재는 장소 탐색과 계정 화면에 공통 레이아웃을 적용하고 TanStack Query로 현재 회원을 조회한다. Zustand 설치·Store 구현은 공유할 UI 상태가 확정될 때까지 보류한다.
 
 ## 샘플 장소 탐색 화면
 
@@ -131,23 +131,18 @@ make frontend-preview
 | URL | 생성 파일 |
 |---|---|
 | `/` | `out/index.html` |
-| `/minimal-example/` | `out/minimal-example/index.html` |
-| `/main-example/` | `out/main-example/index.html` |
-| `/admin-example/` | `out/admin-example/index.html` |
+| `/login/` | `out/login/index.html` |
+| `/mypage/` | `out/mypage/index.html` |
+| `/admin/` | `out/admin/index.html` |
 
 정적 호스트는 디렉터리의 `index.html`을 제공해야 한다. CDN에서 같은 동작을 지원하는지 추후 인프라 작업에서 확인한다. 모든 경로를 루트 HTML로 돌리는 방식 대신 경로에 해당하는 HTML을 제공한다. 클라이언트 이동에 사용하는 `.txt` 파일과 `_next/` 자원도 필요하므로 `out/` 전체를 배포 대상으로 삼는다.
 
 API 주소는 빌드 시 브라우저 코드에 포함된다. 배포 대상 API 주소를 설정한 뒤 빌드하며, 이미 빌드한 파일의 API 주소를 바꾸려면 다시 빌드한다. `/`로 빌드하면 EC2 IP나 접속 도메인이 바뀌어도 같은 이미지를 사용할 수 있다. 비밀정보는 `NEXT_PUBLIC_` 환경변수에 넣지 않는다.
 
-이번 로컬 검증에서 프로덕션 빌드, 네 페이지의 HTML 직접·반복 요청, JS·CSS 자원 11개의 HTTP 200, 빌드 코드의 로컬 API 주소 포함을 확인했다. 실제 Backend의 ID 1 성공·ID 2 업무 오류와 CORS 헤더도 확인했다. Next.js 서버는 사용하지 않았고 검증용 정적 서버는 종료했다.
+`make frontend-preview`로 정적 파일을 제공한 뒤 브라우저에서 다음을 확인한다.
 
-사용자가 로컬 정적 서버에서 다음 브라우저 동작도 정상임을 확인했다.
-
-- `/`의 링크로 세 예시 화면을 이동하고 뒤로 가기
-- 각 예시 URL로 직접 접속하고 새로고침
-- `/main-example/`에서 ID 1 성공·ID 2 오류 표시와 ‘다시 조회’
-
-AWS·CDN·Terraform 구축과 실제 배포는 이번 검증 범위에 포함하지 않는다.
+- `/`와 `/login/`을 직접 열고 새로고침한다.
+- 관리자로 로그인해 `/admin/`을 연다. 주소를 직접 입력하거나 새로고침해도 운영 현황이 표시되는지 확인한다.
 
 ### 초기 구성 검증 결과
 
@@ -266,20 +261,7 @@ ProblemDetail이 아닌 JSON·HTML 응답이나 형식이 다른 필드는 안�
 
 TanStack Query 5.107.1로 서버 응답·로딩·오류·캐시를 관리한다. 최상위 레이아웃에서 `QueryProvider`를 연결한다. 브라우저에서는 같은 Query Client를 재사용하고 서버 렌더링에서는 새로 생성해 요청 간 캐시 공유를 피한다. API 조회는 브라우저에서 실행하며 빌드 시 미리 조회하지 않는다.
 
-```text
-src/
-├── app/
-│   ├── _providers/QueryProvider.tsx
-│   └── (main)/main-example/_components/MainExampleContent/
-│       ├── MainExampleContent.tsx
-│       └── MainExampleContent.test.tsx
-├── domains/example/
-│   ├── queries/exampleQueryKeys.ts
-│   └── hooks/useExampleQuery.ts
-└── shared/lib/query/queryClient.ts
-```
-
-조회 흐름은 `MainExampleContent → useExampleQuery → getExample → apiClient`다. Query Key는 `['examples', 'detail', id]`로 ID별 캐시를 구분하며, 취소 신호는 Axios까지 전달한다.
+예제의 `useExampleQuery`는 `getExample`을 호출한다. Query Key는 `['examples', 'detail', id]`로 ID별 캐시를 구분하며, 취소 신호는 Axios까지 전달한다. [예제 조회 Hook](src/domains/example/hooks/useExampleQuery.ts)
 
 | 공통 정책 | 값 |
 |---|---|
@@ -289,7 +271,7 @@ src/
 | `refetchOnWindowFocus` | `false`. 창 포커스 복귀 시 자동 재조회 안 함 |
 | `refetchOnReconnect` | `true`. 재연결 시 오래된 활성 조회 재조회 |
 
-개별 Hook에서 정책을 재정의할 수 있다. 최신 캐시가 있어도 사용자가 누르는 ‘다시 조회’는 재요청한다. Mutation·데이터 변경 후 캐시 무효화 예시는 이번 범위에 포함하지 않는다.
+개별 Hook에서 정책을 재정의할 수 있다.
 
 ### 현재 회원 조회
 
@@ -297,13 +279,9 @@ src/
 
 ### 로컬 화면 확인
 
-Backend와 MySQL을 준비하고 API 주소를 확인한 뒤 Frontend를 실행한다. `/main-example`에서 ID 1은 성공 응답, ID 2는 업무 오류를 조회한다. 로딩·성공·오류 표시와 ‘다시 조회’를 확인한다. 재조회에 실패해도 기존 데이터가 있다면 안내와 함께 유지한다.
+Backend와 MySQL을 준비하고 Frontend를 실행한다. 브라우저에서 로그인한 뒤 마이페이지와 장소 검색 화면을 오가며 계정 표시를 확인한다. 네트워크 탭의 `/api/v1/members/me` 요청과 TanStack Query Devtools의 `['member', 'me']` 캐시로 회원 조회를 확인할 수 있다. 관리자로 로그인하면 운영 현황에서도 같은 회원 조회를 사용한다.
 
-이 화면은 실제 Backend를 호출한다. 테스트의 MSW는 개발 화면에 적용하지 않는다. 출처가 다른 서버를 브라우저에서 호출하려면 Backend의 CORS·쿠키 정책이 필요하다. Backend의 `local` 프로필은 `http://localhost:3000`을 허용한다. 다른 포트나 호스트를 사용한다면 Backend 허용 출처에도 명시해야 한다.
-
-### API 연동 검증 결과
-
-Frontend 테스트 17개·린트·타입 검사를 통과했다. 실행 중인 Backend의 ID 1 성공 응답과 ID 2의 404 업무 오류, 두 응답의 `http://localhost:3000` CORS·자격 증명 허용 헤더를 확인했다. 이후 사용자가 실제 브라우저에서 ID 1 성공·ID 2 오류 응답을 확인했고, Backend·Frontend 전체 테스트도 통과했다. 인증 쿠키 전송 검증은 별도다.
+Backend의 `local` 프로필은 `http://localhost:3000`을 허용한다. 다른 출처에서 Backend를 호출하려면 해당 출처의 CORS 허용 여부와 쿠키 설정을 확인한다.
 
 ### 컴포넌트 테스트
 
@@ -311,7 +289,7 @@ React Testing Library 16.3.3·user-event 14.6.9·jsdom 31.0.0을 사용한다. �
 
 실제 QueryProvider로 화면을 감싸고 MSW로 응답을 재현한다. `setup-dom.ts`는 테스트마다 화면을 해제하고 Query 캐시·타이머를 정리한다. jsdom 주소는 모의 API와 같은 `https://api.outpick.test`로 지정했다. 실제 브라우저의 CORS·쿠키 정책은 검증하지 않는다.
 
-화면 테스트는 로딩 후 성공 표시, 오류 후 수동 재조회, 성공 데이터 갱신, ID별 캐시 구분과 최신 캐시 재사용을 검증한다. 버튼 클릭과 선택 입력은 user-event로 재현한다. 실제 브라우저 렌더링·뒤로 가기·네트워크 재연결 검증은 포함하지 않는다.
+관리자 접근 확인은 로딩, 접근 거절, 권한 확인에 성공했을 때의 화면을 검증한다. [관리자 접근 테스트](src/domains/admin/components/AdminAccess/AdminAccess.test.tsx)
 
 참고: [TanStack Query Provider 구성](https://tanstack.com/query/latest/docs/framework/react/guides/advanced-ssr), [React Testing Library API](https://testing-library.com/docs/react-testing-library/api/).
 
@@ -347,7 +325,7 @@ npm run lint:fix
 
 ## 라우팅 및 디렉터리 구조
 
-다음은 구현한 라우팅·레이아웃 구조와 후속 기능의 배치 예시다. 서비스 화면은 `(service)`에 모으고, 레이아웃 예시는 별도의 Route Group에 둔다. `_providers/`와 `shared/lib/query/`도 구현했다. 페이지 전용 `_hooks/`, `domains/place/`, Zustand 파일은 향후 배치 예시다. 공통 HTTP 코드와 `domains/example/`은 HTTP 통신·서버 상태 관리 절에 설명한다. 실제 코드가 필요할 때 파일을 추가하고 빈 디렉터리는 미리 만들지 않는다.
+다음은 실제 라우팅과 공통 코드의 배치다. 페이지 전용 컴포넌트는 해당 경로의 `_components/`에 둔다. 실제 코드가 필요할 때 파일을 추가한다.
 
 ```text
 frontend/src/
@@ -363,59 +341,21 @@ frontend/src/
 │   │       ├── mypage/                # /mypage/와 하위 화면
 │   │       └── admin/                 # /admin/와 하위 화면
 │   │           └── layout.tsx         # 운영자 접근 확인
-│   ├── _providers/
-│   │   └── QueryProvider.tsx           # 공통 서버 상태 설정
 │   ├── (minimal)/
-│   │   ├── layout.tsx                 # 본문만 표시
-│   │   └── minimal-example/
-│   │       ├── page.tsx
-│   │       └── _components/
-│   │           └── MinimalExampleContent.tsx
-│   ├── (main)/
-│   │   ├── layout.tsx                 # MainLayout 적용
-│   │   └── main-example/
-│   │       ├── page.tsx
-│   │       ├── _components/
-│   │       │   └── MainExampleContent/
-│   │       │       ├── MainExampleContent.tsx
-│   │       │       └── MainExampleContent.test.tsx
-│   │       └── _hooks/                # 페이지 전용 Hook이 필요할 때
-│   └── (admin)/
-│       ├── layout.tsx                 # AdminLayout 적용
-│       └── admin-example/
-│           ├── page.tsx
-│           └── _components/
-│               └── AdminExampleContent.tsx
+│   │   ├── layout.tsx                 # 인증 화면의 본문
+│   │   ├── login/
+│   │   ├── signup/
+│   │   ├── password-reset/
+│   │   └── reset-password/
+│   ├── _providers/QueryProvider.tsx
+│   └── places/detail/                 # /places/detail/
 ├── domains/
-│   └── place/                         # 실제 장소 기능 구현 시 배치 예시
-│       ├── components/
-│       ├── hooks/
-│       │   ├── usePlacesQuery.ts
-│       │   └── usePlaceQuery.ts
-│       ├── api/
-│       │   └── placeApi.ts
-│       ├── queries/
-│       │   └── placeQueryKeys.ts
-│       ├── stores/
-│       └── types/
-│           └── place.type.ts          # 장소 요청·응답 타입의 배치 예시
-└── shared/
-    ├── components/
-    │   └── layout/
-    │       ├── MainLayout.tsx
-    │       ├── AdminLayout.tsx
-    │       ├── Header.tsx
-    │       ├── Sidebar.tsx
-    │       └── AdminSidebar.tsx
-    ├── hooks/
-    ├── lib/
-    │   ├── http/
-    │   │   └── apiClient.ts            # 공통 HTTP 인스턴스
-    │   └── query/
-    │       └── queryClient.ts          # 공통 서버 상태 설정
-    ├── stores/
-    │   └── useSidebarStore.ts          # 후속 Zustand 작업의 배치 예시
-    └── types/
+│   ├── example/                       # HTTP 통신·조회 Hook 예제
+│   ├── member/                        # 로그인·회원 조회
+│   └── place/                         # 장소 조회·컴포넌트
+└── shared/lib/
+    ├── http/apiClient.ts              # 공통 HTTP 인스턴스
+    └── query/queryClient.ts           # 공통 서버 상태 설정
 ```
 
 ### 코드 배치와 참조 방향
@@ -453,29 +393,17 @@ Query Key는 각 Hook에 문자열로 흩어 놓지 않고 도메인의 `queries
 
 `*.type.ts`는 팀의 파일명 규칙이며 TypeScript의 선언 파일인 `*.d.ts`와 구분한다. API 요청·응답 DTO 타입에도 `*.type.ts`를 사용한다. 위 경로는 배치 예시이며 실제 코드가 필요할 때 추가한다.
 
-### 레이아웃과 예시 URL
+### 레이아웃과 서비스 URL
 
-최상위 `app/layout.tsx`에는 모든 화면에 필요한 `html`, `body`, 공통 Provider를 둔다. 각 Route Group의 `layout.tsx`는 레이아웃 컴포넌트에 `children`을 전달하고, 실제 헤더·사이드바 배치는 `shared/components/layout/`의 컴포넌트에서 구성한다. 최소 레이아웃은 `children`만 반환한다.
+최상위 `app/layout.tsx`는 `html`, `body`, 공통 Provider를 제공한다. `(service)`는 장소 검색과 회원 영역의 공통 헤더를 제공하고, 하위의 `(account)`는 마이페이지와 관리자 화면의 사이드바를 공유한다. `(minimal)`은 로그인 등 인증 화면의 본문을 표시한다.
 
-`(minimal)` 같은 Route Group은 URL에 포함되지 않는다. `_components`, `_hooks`, `_providers`는 라우팅 대상에서 제외하는 내부 디렉터리다.
-
-| 예시 URL | 레이아웃 |
+| 서비스 URL | 레이아웃 |
 |---|---|
-| `/minimal-example/` | 본문만 표시 |
-| `/main-example/` | 일반 헤더 + 사이드바 |
-| `/admin-example/` | 관리자 헤더 + 관리자 사이드바 |
+| `/` | 공통 헤더와 장소 탐색 |
+| `/mypage/`, `/admin/` | 공통 헤더, 사이드바와 본문 |
+| `/login/` | 인증 화면 본문 |
 
-위 세 가지 레이아웃과 페이지 전용 컴포넌트를 최소한의 Tailwind CSS 스타일로 구현했다. 레이아웃 예시는 `domains/example/`에 넣지 않는다. 해당 도메인은 구현된 HTTP 통신·조회 Hook 예시로 사용한다. 관리자 예시는 화면 구성을 보여 주며 권한 검사는 포함하지 않는다.
-
-Axios 인스턴스와 Query Provider·Query Client·example Query Key는 구현했다. Zustand Store는 공유할 UI 상태가 확정된 뒤 추가한다. `domains/place/`는 향후 실제 장소 기능의 배치 예시이며 이번 예시 구현 범위에 포함하지 않는다.
-
-### 예시 확인과 새 페이지 추가
-
-`make frontend-dev`로 실행한 뒤 표에 있는 예시 주소를 연다. 각 주소로 직접 접속하거나 새로고침하고, 예시 목록으로 돌아오는 링크도 확인한다. 일반·관리자 사이드바는 넓은 화면에서는 왼쪽에, 좁은 화면에서는 본문 위에 배치한다.
-
-새 페이지는 원하는 레이아웃의 Route Group 아래에 `page.tsx`를 추가한다. 페이지 전용 컴포넌트는 해당 경로의 `_components/`에 두고, 상위 그룹의 `layout.tsx`가 적용하는 헤더·사이드바를 페이지에서 다시 작성하지 않는다.
-
-이번 구현은 ESLint·타입 검사를 통과했다. 레이아웃 예시를 만들 당시 개발 서버에서 HTTP 200, 레이아웃별 헤더·사이드바 포함 여부, 진입·복귀 링크를 HTML로 확인했다. 레이아웃 작업 당시 정적 빌드는 생략했지만, 이후 정적 배포 검증에서 빌드와 사용자 브라우저의 링크 이동·뒤로 가기·새로고침·API 동작 확인을 마쳤다. 반응형 세부 디자인 검수는 별도다.
+`(minimal)` 같은 Route Group은 URL에 포함되지 않는다. `_components`, `_hooks`, `_providers`는 라우팅 대상에서 제외하는 내부 디렉터리다. 새 페이지의 위치는 적용할 상위 레이아웃에 맞춰 정한다.
 
 ### 관리자 페이지 추가
 
