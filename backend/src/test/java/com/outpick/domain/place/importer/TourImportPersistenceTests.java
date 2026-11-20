@@ -30,10 +30,10 @@ class TourImportPersistenceTests {
     @Autowired TourOperatingInfoWriter operatingWriter;
 
     @Test
-    @DisplayName("기존 초기 5곳은 유지하고 서울 45곳을 초안으로 추가하며 재실행 시 중복 저장하지 않는다")
+    @DisplayName("기존 50곳은 유지하고 전국 450곳을 초안으로 추가하며 재실행 시 중복 저장하지 않는다")
     void importsExpandedTargetsAndSkipsThemOnRerun() {
         var targets = TourImportTarget.initialPlaces();
-        assertThat(targets).hasSize(50).extracting(TourImportTarget::contentId).doesNotHaveDuplicates();
+        assertThat(targets).hasSize(500).extracting(TourImportTarget::contentId).doesNotHaveDuplicates();
         var byId = targets.stream().collect(Collectors.toMap(TourImportTarget::contentId, Function.identity()));
         var client = new TourApiClient(id -> { throw new AssertionError("테스트에서 외부 API를 호출했습니다."); }) {
             @Override
@@ -45,12 +45,12 @@ class TourImportPersistenceTests {
         };
         var importer = new TourApiImportService(client, new TourApiNormalizer(), writer);
 
-        assertThat(importer.importPlaces(targets.subList(0, 5))).hasSize(5)
+        assertThat(importer.importPlaces(targets.subList(0, 50))).hasSize(50)
                 .allMatch(result -> result.status() == TourImportResult.Status.CREATED);
         var expanded = importer.importPlaces(targets);
-        assertThat(expanded.stream().filter(result -> result.status() == TourImportResult.Status.CREATED)).hasSize(45);
-        assertThat(expanded.stream().filter(result -> result.status() == TourImportResult.Status.SKIPPED)).hasSize(5);
-        assertThat(importer.importPlaces(targets)).hasSize(50)
+        assertThat(expanded.stream().filter(result -> result.status() == TourImportResult.Status.CREATED)).hasSize(450);
+        assertThat(expanded.stream().filter(result -> result.status() == TourImportResult.Status.SKIPPED)).hasSize(50);
+        assertThat(importer.importPlaces(targets)).hasSize(500)
                 .allMatch(result -> result.status() == TourImportResult.Status.SKIPPED);
         assertThat(expanded).allSatisfy(result -> assertThat(jdbc.queryForObject(
                 "select publish_status from place where place_id=?", Integer.class, result.placeId())).isZero());
