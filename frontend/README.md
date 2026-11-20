@@ -270,7 +270,7 @@ TanStack Query 5.107.1로 서버 응답·로딩·오류·캐시를 관리한다.
 src/
 ├── app/
 │   ├── _providers/QueryProvider.tsx
-│   └── (main)/main-example/_components/
+│   └── (main)/main-example/_components/MainExampleContent/
 │       ├── MainExampleContent.tsx
 │       └── MainExampleContent.test.tsx
 ├── domains/example/
@@ -364,7 +364,9 @@ frontend/src/
 │   │   └── main-example/
 │   │       ├── page.tsx
 │   │       ├── _components/
-│   │       │   └── MainExampleContent.tsx
+│   │       │   └── MainExampleContent/
+│   │       │       ├── MainExampleContent.tsx
+│   │       │       └── MainExampleContent.test.tsx
 │   │       └── _hooks/                # 페이지 전용 Hook이 필요할 때
 │   └── (admin)/
 │       ├── layout.tsx                 # AdminLayout 적용
@@ -422,6 +424,8 @@ frontend/src/
 
 페이지 전용 컴포넌트는 여러 도메인 기능을 조합할 수 있다. 일반 화면과 관리자 화면이 같은 장소 API를 사용해도 장소 코드는 `domains/place/`에서 관리한다. 페이지나 레이아웃 종류마다 도메인을 만들지 않는다.
 
+컴포넌트 전용 테스트, 설정, 스타일처럼 관련 파일이 여러 개면 컴포넌트 이름과 같은 디렉터리에 함께 둔다. 구현 파일 하나로 구성된 컴포넌트는 해당 `components/` 또는 `_components/` 바로 아래에 둘 수 있다. [프로필 메뉴 배치 예시](src/domains/member/components/MemberProfileMenu/)
+
 Query Key는 각 Hook에 문자열로 흩어 놓지 않고 도메인의 `queries/`에서 함께 정의한다. 서버 응답은 TanStack Query가 관리하고 Zustand에 복사하지 않는다. 도메인 전용 공유 UI 상태는 해당 도메인의 `stores/`에, 여러 도메인에서 사용하는 공통 UI 상태는 `shared/stores/`에 둔다. 한 컴포넌트의 상태와 URL 검색 조건은 [상태 관리 규칙](#상태-관리-규칙)을 따른다.
 
 ### 타입 파일 이름
@@ -461,6 +465,17 @@ Axios 인스턴스와 Query Provider·Query Client·example Query Key는 구현�
 새 페이지는 원하는 레이아웃의 Route Group 아래에 `page.tsx`를 추가한다. 페이지 전용 컴포넌트는 해당 경로의 `_components/`에 두고, 상위 그룹의 `layout.tsx`가 적용하는 헤더·사이드바를 페이지에서 다시 작성하지 않는다.
 
 이번 구현은 ESLint·타입 검사를 통과했다. 개발 서버의 네 경로에서 HTTP 200, 레이아웃별 헤더·사이드바 포함 여부, 진입·복귀 링크를 HTML로 확인했다. 레이아웃 작업 당시 정적 빌드는 생략했지만, 이후 정적 배포 검증에서 빌드와 사용자 브라우저의 링크 이동·뒤로 가기·새로고침·API 동작 확인을 마쳤다. 반응형 세부 디자인 검수는 별도다.
+
+### 관리자 페이지 추가
+
+1. `src/app/admin/` 아래에 페이지 디렉터리를 만들고 `page.tsx`에서 화면을 배치한다. 예를 들어 `src/app/admin/review-reports/page.tsx`는 `/admin/review-reports/`의 본문을 구성한다. [후기 신고 페이지](src/app/admin/review-reports/page.tsx)
+2. `src/app/admin/layout.tsx`가 하위 페이지에 운영자 접근 확인(`AdminAccess`), 공통 헤더, 사이드바, 본문 영역을 적용한다. 새 `page.tsx`에는 페이지 본문만 넣는다. 관리자 API의 권한은 백엔드에서 검사한다. [관리자 공통 레이아웃](src/app/admin/layout.tsx)
+3. 사이드바에 표시할 관리자 페이지는 `accountSidebarItems.ts`의 `adminNavigationItems`에 `label`, `href`, `Icon`을 등록한다. 후기 신고 메뉴는 `/admin/review-reports/`와 `lucide-react`의 `MessageSquareWarning`을 사용한다. 일반 회원과 운영자에게 모두 표시할 마이페이지 메뉴는 같은 파일의 `commonNavigationItems`에 둔다. [사이드바 메뉴 목록](src/app/_components/AccountSidebar/accountSidebarItems.ts)
+4. 해당 페이지에서만 사용하는 조합 UI는 라우트의 `_components/`에 둔다. 도메인 기능은 담당 도메인에 둔다. 후기 신고 화면은 `src/domains/review/components/ReviewReportsAdmin/`에 컴포넌트와 스타일을 함께 두고, 신고 조회·처리 요청은 `src/domains/review/api/reviewApi.ts`에 둔다. [후기 신고 컴포넌트](src/domains/review/components/ReviewReportsAdmin/) · [후기 API](src/domains/review/api/reviewApi.ts)
+
+운영자로 로그인해 사이드바에서 새 메뉴를 선택한다. 본문과 현재 메뉴 표시를 확인하고, 같은 주소에 직접 접속하거나 새로고침해도 페이지가 열리는지 확인한다.
+
+마이페이지와 관리자 화면은 `AccountAreaLayout`에서 공통 헤더와 사이드바를 사용한다. 마이페이지에 화면을 추가할 때는 `src/app/mypage/` 아래에 `page.tsx`를 두고, 메뉴에 표시할 경우 공통 목록에 등록한다. 운영자는 두 화면에서 공통 메뉴 아래에 관리자 메뉴를 함께 본다. [공통 레이아웃](src/app/_components/AccountAreaLayout.tsx) · [마이페이지 레이아웃](src/app/mypage/layout.tsx)
 
 ### 장소 상세 URL과 메타정보
 

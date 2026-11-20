@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import PlaceExplorer from './_components/PlaceExplorer';
+import PlaceExplorer from './_components/PlaceExplorer/PlaceExplorer';
 
 export default function Home() {
   return (
