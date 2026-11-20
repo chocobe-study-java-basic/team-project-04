@@ -15,6 +15,7 @@ vi.mock('@/domains/place/components/KakaoPlaceMap/KakaoPlaceMap', () => ({
   default: ({ places, onBoundsChange, view }: { places: PlaceMapItem[]; onBoundsChange: (bounds: PlaceMapBounds, view: PlaceMapView) => void; view: PlaceMapView | null }) => (
     <div aria-label="테스트 지도" data-view={JSON.stringify(view)} data-ids={places.map(place => place.id).join(',')}>
       <button onClick={() => onBoundsChange({ south: 37.37, north: 37.38, west: 128.39, east: 128.66 }, { lat: 37.375, lng: 128.525, level: 8 })}>테스트 지도 이동</button>
+      <button onClick={() => onBoundsChange({ south: 38.37, north: 38.38, west: 128.39, east: 128.66 }, { lat: 38.375, lng: 128.525, level: 8 })}>다른 지도 범위로 이동</button>
     </div>
   ),
 }));
@@ -103,6 +104,37 @@ describe('DB 장소 목록 화면', () => {
     const link = await screen.findByRole('link', { name: '눈마루 리조트 상세 보기' });
     const detail = new URL(link.getAttribute('href')!, window.location.origin);
     expect(new URL(detail.searchParams.get('returnTo')!, window.location.origin).searchParams.get('level')).toBe('8');
+  });
+  it('새 지도 범위를 조회하면 진행 중인 이전 요청을 취소하고 마지막 결과를 표시한다', async () => {
+    const firstRequest = Promise.withResolvers<AbortSignal>();
+    const releaseFirstResponse = Promise.withResolvers<void>();
+    server.use(http.get(base, async ({ request }) => {
+      const params = new URL(request.url).searchParams;
+      const south = params.get('south');
+      if (south === '37.37') {
+        firstRequest.resolve(request.signal);
+        await releaseFirstResponse.promise;
+      }
+      const items = south === '38.37' ? [rows[1]] : [rows[0]];
+      return HttpResponse.json({ items, page: Number(params.get('page')), size: 20, totalElements: 1 });
+    }));
+    window.history.replaceState(null, '', '/?page=1');
+    const user = userEvent.setup();
+    mount();
+    await screen.findByText('2페이지');
+
+    try {
+      await user.click(screen.getByRole('button', { name: '테스트 지도 이동' }));
+      const signal = await firstRequest.promise;
+      expect(new URLSearchParams(window.location.search).get('page')).toBeNull();
+      await user.click(screen.getByRole('button', { name: '다른 지도 범위로 이동' }));
+
+      await waitFor(() => expect(signal.aborted).toBe(true));
+      expect(await screen.findByRole('heading', { name: '파도 서프 스테이션' })).toBeTruthy();
+      expect(screen.queryByRole('heading', { name: '눈마루 리조트' })).toBeNull();
+    } finally {
+      releaseFirstResponse.resolve();
+    }
   });
   it('오류를 빈 결과나 샘플 장소로 숨기지 않고 재시도를 제공한다', async () => {
     server.use(http.get(base, () => new HttpResponse(null, { status: 500 })));
