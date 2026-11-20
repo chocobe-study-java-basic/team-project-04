@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { changePlaceSearchFilters, defaultFilters, placeSearchFormId, readPlaceSearchParams, seasons } from './placeSearchParams';
 import PlacePhoto, { PlacePhotoCredit } from '@/domains/place/components/PlacePhoto/PlacePhoto';
 import CopyPlaceLinkButton from '@/domains/place/components/CopyPlaceLinkButton/CopyPlaceLinkButton';
 import KakaoPlaceMap from '@/domains/place/components/KakaoPlaceMap/KakaoPlaceMap';
-import type { PlaceMapBounds, PlaceMapView } from '@/domains/place/types/kakaoMap.type';
+import type { PlaceMapBounds, PlaceMapSelection, PlaceMapView } from '@/domains/place/types/kakaoMap.type';
 import { readPlaceMapBounds, readPlaceMapParams, writePlaceMapParams } from '@/domains/place/lib/placeMapParams';
 import { usePlaces } from '@/domains/place/hooks/usePlaces';
 import { getPlaceDetailUrl, rememberPlaceListPosition, takePlaceListPosition } from '@/domains/place/lib/placeNavigation';
@@ -17,8 +17,9 @@ import './PlaceExplorer.css';
 export default function PlaceExplorer() {
   const searchParams = useSearchParams();
   const { query: search, category, region, season, environment, sort } = readPlaceSearchParams(searchParams);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selection, setSelection] = useState<PlaceMapSelection | null>(null);
   const [mobileMap, setMobileMap] = useState(false);
+  const placeList = useRef<HTMLUListElement>(null);
   const mapBounds = useMemo(() => readPlaceMapBounds(searchParams), [searchParams]);
   const listUrl = `/${searchParams.size ? `?${searchParams}` : ''}`;
   const mapView = readPlaceMapParams(searchParams);
@@ -33,7 +34,18 @@ export default function PlaceExplorer() {
   })), [placeQuery.data]);
   const mapPlaces = useMemo(() => places.flatMap(place => place.latitude !== null && place.longitude !== null
     ? [{ id: place.id, name: place.name, latitude: place.latitude, longitude: place.longitude }] : []), [places]);
-  const selectedPlace = places.find(place => place.id === selectedId);
+  const selectedPlace = places.find(place => place.id === selection?.id);
+
+  const selectMapMarker = useCallback((nextSelection: PlaceMapSelection) => {
+    setSelection(nextSelection);
+    setMobileMap(false);
+  }, []);
+
+  useEffect(() => {
+    if (selection?.source !== 'map') return;
+    const card = placeList.current?.querySelector(`[data-place-id="${selection.id}"]`);
+    card?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [selection]);
 
   function changeMapBounds(bounds: PlaceMapBounds, view: PlaceMapView) {
     const params = writePlaceMapParams(new URLSearchParams(window.location.search), view, bounds);
@@ -70,7 +82,7 @@ export default function PlaceExplorer() {
 
   function resetFilters() {
     changePlaceSearchFilters(defaultFilters);
-    setSelectedId(null);
+    setSelection(null);
   }
 
   return (
@@ -118,11 +130,11 @@ export default function PlaceExplorer() {
           {places.some(place => place.name?.startsWith('[데모]')) && <p className="outpick-sampleNotice">[데모] 표시는 가상 장소이며 실제 시설 정보가 아닙니다.</p>}
           <p className="outpick-sampleNotice">지도를 이동하면 자동 검색해요. 지도에는 현재 페이지의 장소만 표시돼요.</p>
           {failed ? <div className="outpick-empty" role="alert"><h2>장소를 불러오지 못했어요</h2><p>서버 연결을 확인하고 다시 시도해 주세요.</p><button type="button" onClick={() => { if (catalog.isError) void catalog.refetch(); else void placeQuery.refetch(); }}>다시 시도</button></div> : loading ? <p role="status">장소 정보를 조회하고 있어요.</p> : places.length > 0 ? (
-            <ul className="outpick-cards" aria-label="장소 목록">
+            <ul ref={placeList} className="outpick-cards" aria-label="장소 목록">
               {places.map(place => (
                 <li key={place.id}>
-                  <article className={`outpick-placeCard ${selectedPlace?.id === place.id ? 'outpick-placeCardSelected' : ''}`}>
-                    <button type="button" aria-pressed={selectedPlace?.id === place.id} className="outpick-card" onClick={() => setSelectedId(place.id)}>
+                  <article data-place-id={place.id} className={`outpick-placeCard ${selectedPlace?.id === place.id ? 'outpick-placeCardSelected' : ''}`}>
+                    <button type="button" aria-pressed={selectedPlace?.id === place.id} className="outpick-card" onClick={() => setSelection({ id: place.id, source: 'list' })}>
                       <PlacePhoto place={place} />
                       <div className="outpick-cardBody">
                         <p className="outpick-location">{place.address ?? '주소 미확인'}</p>
@@ -157,7 +169,7 @@ export default function PlaceExplorer() {
         </section>
 
         <aside aria-label="장소 지도" className={`outpick-mapPanel ${!mobileMap ? 'outpick-mapMobileHidden' : ''}`}>
-          <KakaoPlaceMap places={mapPlaces} selectedId={selectedPlace?.id ?? null} onSelect={setSelectedId} onBoundsChange={changeMapBounds} view={mapView} />
+          <KakaoPlaceMap places={mapPlaces} selection={selectedPlace ? selection : null} onSelect={selectMapMarker} onBoundsChange={changeMapBounds} view={mapView} hasSearchBounds={mapBounds !== null} />
           {selectedPlace && (
             <div className="outpick-mapSelection" aria-live="polite">
               <span>선택한 장소</span><h3>{selectedPlace.name}</h3>

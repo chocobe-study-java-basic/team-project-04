@@ -9,13 +9,21 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { createQueryClient } from '@/shared/lib/query/queryClient';
 import ServiceHeader from '../ServiceHeader';
 import PlaceExplorer from './PlaceExplorer';
-import type { PlaceMapBounds, PlaceMapItem, PlaceMapView } from '@/domains/place/types/kakaoMap.type';
+import type { PlaceMapBounds, PlaceMapItem, PlaceMapSelection, PlaceMapView } from '@/domains/place/types/kakaoMap.type';
 
 vi.mock('@/domains/place/components/KakaoPlaceMap/KakaoPlaceMap', () => ({
-  default: ({ places, onBoundsChange, view }: { places: PlaceMapItem[]; onBoundsChange: (bounds: PlaceMapBounds, view: PlaceMapView) => void; view: PlaceMapView | null }) => (
+  default: ({ places, onBoundsChange, onSelect, view }: {
+    places: PlaceMapItem[];
+    onBoundsChange: (bounds: PlaceMapBounds, view: PlaceMapView) => void;
+    onSelect: (selection: PlaceMapSelection) => void;
+    view: PlaceMapView | null;
+  }) => (
     <div aria-label="테스트 지도" data-view={JSON.stringify(view)} data-ids={places.map(place => place.id).join(',')}>
       <button onClick={() => onBoundsChange({ south: 37.37, north: 37.38, west: 128.39, east: 128.66 }, { lat: 37.375, lng: 128.525, level: 8 })}>테스트 지도 이동</button>
       <button onClick={() => onBoundsChange({ south: 38.37, north: 38.38, west: 128.39, east: 128.66 }, { lat: 38.375, lng: 128.525, level: 8 })}>다른 지도 범위로 이동</button>
+      {places.map(place => (
+        <button key={place.id} onClick={() => onSelect({ id: place.id, source: 'map' })}>테스트 마커 {place.id}</button>
+      ))}
     </div>
   ),
 }));
@@ -76,6 +84,28 @@ describe('DB 장소 목록 화면', () => {
     expect(screen.getByLabelText('테스트 지도').getAttribute('data-ids')).toBe('1');
     expect(screen.getByText('위치 미확인 · 지도에는 표시되지 않아요.')).toBeTruthy();
     expect(requests[0].searchParams.get('size')).toBe('20');
+  });
+  it('마커를 선택하면 조회 없이 카드를 강조하고 목록에서 보이게 한다', async () => {
+    const user = userEvent.setup();
+    mount();
+    const cardButton = await screen.findByRole('button', { name: /눈마루 리조트/ });
+    const marker = screen.getByRole('button', { name: '테스트 마커 1' });
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(cardButton.closest('article'), 'scrollIntoView', { value: scrollIntoView });
+
+    expect(cardButton.getAttribute('aria-pressed')).toBe('false');
+    await user.click(marker);
+    expect(cardButton.getAttribute('aria-pressed')).toBe('true');
+    expect(scrollIntoView).toHaveBeenCalledExactlyOnceWith({ block: 'nearest', inline: 'nearest' });
+
+    await user.click(cardButton);
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole('button', { name: '지도 보기' }));
+    expect(screen.getByRole('button', { name: '목록 보기' })).toBeTruthy();
+    await user.click(marker);
+    expect(screen.getByRole('button', { name: '지도 보기' }).getAttribute('aria-pressed')).toBe('false');
+    expect(scrollIntoView).toHaveBeenCalledTimes(2);
+    expect(requests).toHaveLength(1);
   });
   it('필터 이름을 서버 ID와 코드로 바꾸고 검색 제출 전에는 검색어를 반영하지 않는다', async () => {
     const user = userEvent.setup(); mount();
@@ -169,13 +199,22 @@ describe('DB 장소 목록 화면', () => {
     expect(input.value).toBe('');
     expect(window.location.search).toBe('');
   });
-  it('페이지를 URL에 저장하고 필터를 변경하면 첫 페이지로 돌아간다', async () => {
-    server.use(http.get(base, ({ request }) => HttpResponse.json({ items: rows, page: Number(new URL(request.url).searchParams.get('page')), size: 20, totalElements: 21 })));
+  it('장소를 선택하면 현재 페이지를 유지하고 필터를 변경하면 첫 페이지로 돌아간다', async () => {
+    server.use(http.get(base, ({ request }) => {
+      const url = new URL(request.url);
+      requests.push(url);
+      return HttpResponse.json({ items: rows, page: Number(url.searchParams.get('page')), size: 20, totalElements: 21 });
+    }));
     const user = userEvent.setup(); mount();
     await screen.findByRole('heading', { name: '눈마루 리조트' });
     await user.click(screen.getByRole('button', { name: '다음' }));
     expect(new URLSearchParams(window.location.search).get('page')).toBe('1');
     await screen.findByText('2페이지');
+    const card = screen.getByRole('button', { name: /눈마루 리조트/ });
+    await user.click(card);
+    expect(card.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText('2페이지')).toBeTruthy();
+    expect(requests.map(url => url.searchParams.get('page'))).toEqual(['0', '1']);
     await user.selectOptions(screen.getByRole('combobox', { name: '지역' }), '강원');
     expect(new URLSearchParams(window.location.search).get('page')).toBeNull();
   });
