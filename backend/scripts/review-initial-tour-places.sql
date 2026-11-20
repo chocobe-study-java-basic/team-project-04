@@ -1,9 +1,11 @@
--- 2026-11-16 공식 시설 안내를 대조한 초기 5곳의 수동 공개용 데이터.
+-- 공식 시설 안내를 대조한 초기 5곳과 지도 검증용 서울 45곳을 공개한다.
 -- 로컬 Make 또는 EC2 초기 데이터 스크립트에서 명시적으로 실행한다.
 -- Flyway/서버 시작에 연결하지 않는다.
 -- 원본 TourAPI 출처는 보존하고, 확인한 항목에만 OFFICIAL 출처를 추가한다.
 -- 사진/운영시간/요금/시즌은 미확인. 좌표는 TourAPI 원본이며 공식 검증 항목에 포함하지 않는다.
 SET NAMES utf8mb4;
+
+-- 2026-11-16 대조한 공식 시설 안내를 반영하는 초기 5곳이다.
 DROP TEMPORARY TABLE IF EXISTS initial_place_review;
 CREATE TEMPORARY TABLE initial_place_review (
     content_id VARCHAR(50) PRIMARY KEY,
@@ -61,6 +63,24 @@ UPDATE place p JOIN initial_review_targets r ON r.place_id = p.place_id
 SET p.address = r.reviewed_address, p.homepage = r.reviewed_homepage, p.introduce = r.introduction,
     p.reviewed_at = '2026-11-16 00:00:00', p.publish_status = 1;
 SELECT COUNT(*) AS published_this_run FROM initial_review_targets;
+
+-- 지도와 페이지네이션 검증용 TourAPI 초안은 게시 상태만 변경한다.
+UPDATE place p
+JOIN tour_api_import i ON i.place_id = p.place_id
+JOIN source_record s ON s.source_record_id = i.source_record_id AND s.place_id = p.place_id
+SET p.publish_status = 1
+WHERE p.publish_status = 0
+  AND s.type = 'TOUR_API' AND s.origin_id = i.content_id
+  AND i.content_id IN (
+    '131139', '1017568', '2743751', '131297', '3060929', '131727', '1093200', '2674989',
+    '3074766', '2758179', '2773297', '3058205', '131318', '131313', '2783315', '1148818',
+    '3080519', '775883', '1964922', '1964914', '1964932', '1964937', '2553819', '2647687',
+    '131519', '4068707', '2773417', '2753381', '3060926', '767780', '2733973', '2406564',
+    '131333', '1101088', '663785', '131455', '131138', '3060932', '131122', '586753',
+    '990140', '131624', '131317', '131315', '4109623'
+  );
+SELECT ROW_COUNT() AS published_map_test_this_run;
+
 COMMIT;
 DROP TEMPORARY TABLE initial_review_targets;
 DROP TEMPORARY TABLE initial_place_review;

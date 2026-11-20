@@ -62,7 +62,7 @@ systemctl is-active docker
 | `nginx/default.conf`, `nginx/https.conf` | `nginx/` | HTTP·HTTPS 요청 처리 |
 | `scripts/renew-certificates.sh`, `scripts/certificate-storage.sh`, `scripts/init-places.sh` | `scripts/` | 인증서 갱신·보관·초기 장소 준비 |
 | `infra/systemd/outpick-certbot-renew.service`, `infra/systemd/outpick-certbot-renew.timer` | `infra/systemd/` | 인증서 자동 갱신 작업·예약 |
-| `backend/scripts/review-initial-tour-places.sql` | `backend/scripts/` | 조건에 맞는 초기 장소 공개 |
+| `backend/scripts/review-initial-tour-places.sql` | `backend/scripts/` | 초기 검수 장소와 지도 검증용 장소 공개 |
 
 ```bash
 ssh -i "$SSH_KEY" "ubuntu@$EC2_IP" \
@@ -226,13 +226,13 @@ sudo journalctl -u outpick-certbot-renew.service --no-pager -n 50
 
 ## 8. 초기 장소 준비
 
-초기 데이터가 없는 DB에서 **EC2**로 실행합니다.
+초기 데이터를 준비하려면 **EC2**에서 실행합니다. 이미 TourAPI 장소를 수집한 DB에서도 남은 초안을 공개할 수 있습니다.
 
 ```bash
 bash scripts/init-places.sh
 ```
 
-DB 접속 확인 → TourAPI 후보 50곳 수집 → 검수 조건을 충족한 초기 장소 최대 5곳 공개 → 조회 순서입니다. `.env`의 TourAPI 키를 사용합니다. 이미 수집·공개한 장소는 건너뛰며 다른 장소를 삭제하지 않습니다. 중간에 실패하면 원인을 해결한 뒤 같은 명령을 다시 실행합니다.
+로컬 초기화와 같이 TourAPI 후보 50곳 수집, 검수 조건을 충족한 초기 장소 최대 5곳 공개, 서울 지도 검증용 장소 최대 45곳 공개, 결과 조회 순서로 진행합니다. `.env`의 TourAPI 키를 사용합니다. 이미 수집하거나 공개한 장소는 건너뜁니다. 중간에 실패하면 원인을 해결한 뒤 같은 명령을 다시 실행합니다.
 
 결과의 `publish_status = 1`인 장소를 브라우저에서 확인합니다. 예상 값과 달라 공개 조건을 만족하지 않은 장소는 `0`으로 남을 수 있습니다. 초기 공개는 기존 검수 SQL을 적용하는 작업이며 시설을 새로 검수하는 것은 아닙니다. 결과와 실패 대응은 [장소 스크립트 설명](../backend/docs/ec2-initial-places.md)을 참고합니다.
 
