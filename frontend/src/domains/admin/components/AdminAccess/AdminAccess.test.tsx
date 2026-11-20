@@ -50,7 +50,7 @@ describe('관리자 공통 접근 확인', () => {
 
     await user.click(screen.getByRole('button', { name: '프로필 메뉴' }));
 
-    expect(await screen.findByRole('link', { name: '관리자 화면' })).toBeTruthy();
+    expect(await screen.findByRole('link', { name: '운영 현황' })).toBeTruthy();
     expect(await screen.findByRole('heading', { name: adminHeading })).toBeTruthy();
     expect(requestCount).toBe(1);
   });

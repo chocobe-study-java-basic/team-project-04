@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { Member } from '@/domains/member/api/memberApi';
-import { adminNavigationItems, commonNavigationItems, memberNavigationItems } from './accountSidebarItems';
+import { adminNavigationItems, commonNavigationItems, memberNavigationItems } from '@/domains/member/navigation/accountNavigationItems';
 
 const regularMemberItems = [...commonNavigationItems, ...memberNavigationItems];
 
@@ -35,12 +35,10 @@ export default function AccountSidebar({ role }: { role: Member['role'] }) {
   return (
     <aside className="rounded-2xl border border-[#e4e9f1] bg-white p-2.5 md:p-3">
       <nav aria-label="공통 메뉴">
-        <p className="px-2.5 pt-1 pb-2 text-xs font-semibold text-slate-500 md:px-3">공통 메뉴</p>
         <NavigationLinks items={role === 'USER' ? regularMemberItems : commonNavigationItems} pathname={pathname} />
       </nav>
       {role === 'ADMIN' && (
         <nav aria-label="관리자 메뉴" className="mt-3 border-t border-[#e4e9f1] pt-2">
-          <p className="px-2.5 pt-1 pb-2 text-xs font-semibold text-slate-500 md:px-3">관리자 메뉴</p>
           <NavigationLinks items={adminNavigationItems} pathname={pathname} />
         </nav>
       )}

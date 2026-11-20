@@ -34,6 +34,8 @@ describe('공통 사이드바', () => {
 
     const menu = within(screen.getByRole('navigation', { name: '관리자 메뉴' }));
     const commonMenu = within(screen.getByRole('navigation', { name: '공통 메뉴' }));
+    expect(screen.queryByText('공통 메뉴')).toBeNull();
+    expect(screen.queryByText('관리자 메뉴')).toBeNull();
     expect(commonMenu.getAllByRole('link').map(link => link.textContent)).toEqual(['마이페이지']);
     expect(menu.getAllByRole('link').map(link => link.textContent)).toEqual(['운영 현황', '장소 관리', '공지 관리', '오류 제보', '후기 신고']);
     expect(screen.getAllByRole('link', { current: 'page' })).toEqual([screen.getByRole('link', { name: label })]);

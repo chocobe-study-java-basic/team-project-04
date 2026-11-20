@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { changePlaceSearchFilters, defaultFilters, placeSearchFormId, readPlaceSearchParams, seasons } from './placeSearchParams';
 import PlacePhoto, { PlacePhotoCredit } from '@/domains/place/components/PlacePhoto/PlacePhoto';
+import CopyPlaceLinkButton from '@/domains/place/components/CopyPlaceLinkButton/CopyPlaceLinkButton';
 import KakaoPlaceMap from '@/domains/place/components/KakaoPlaceMap/KakaoPlaceMap';
 import type { PlaceMapBounds, PlaceMapView } from '@/domains/place/types/kakaoMap.type';
 import { readPlaceMapBounds, readPlaceMapParams, writePlaceMapParams } from '@/domains/place/lib/placeMapParams';
@@ -110,6 +111,9 @@ export default function PlaceExplorer() {
               <option value="name">이름순</option><option value="name-desc">이름 역순</option>
             </select></label>
             <button type="reset" form={placeSearchFormId} className="outpick-reset" onClick={resetFilters}>필터 초기화</button>
+          </div>
+          <div className="mt-2">
+            <CopyPlaceLinkButton label="검색 링크 복사" />
           </div>
           {places.some(place => place.name?.startsWith('[데모]')) && <p className="outpick-sampleNotice">[데모] 표시는 가상 장소이며 실제 시설 정보가 아닙니다.</p>}
           <p className="outpick-sampleNotice">지도를 이동하면 자동 검색해요. 지도에는 현재 페이지의 장소만 표시돼요.</p>
