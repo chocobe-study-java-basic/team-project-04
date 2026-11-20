@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePlaceCatalog } from '@/domains/place/hooks/usePlaces';
 import { createPlaceDraft } from '../api/adminApi';
 import { adminPlacesQuery } from '../queries/adminPlacesQuery';
+import { adminSummaryQuery } from '../queries/adminSummaryQuery';
 
 export default function AdminPlaces() {
   const queryClient = useQueryClient();
@@ -16,9 +17,15 @@ export default function AdminPlaces() {
   const [description, setDescription] = useState('');
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const draft = useMutation({
+    mutationFn: createPlaceDraft,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: adminPlacesQuery.queryKey, exact: true }),
+        queryClient.invalidateQueries({ queryKey: adminSummaryQuery.queryKey, exact: true }),
+      ]);
+    },
+  });
 
   const regions = catalog.data?.regions ?? [];
   const places = recentPlaces.data ?? [];
@@ -29,21 +36,26 @@ export default function AdminPlaces() {
   const loading = !loadFailed && (catalog.isPending || recentPlaces.isPending);
   const showFormAndList = catalog.data !== undefined && recentPlaces.data !== undefined;
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setError(''); setNotice('');
-    try {
-      const created = await createPlaceDraft({ regionId: Number(regionId), name: name.trim(),
-        address: address.trim(), description: description.trim(),
-        latitude: Number(latitude), longitude: Number(longitude) });
-      await queryClient.cancelQueries({ queryKey: adminPlacesQuery.queryKey, exact: true });
-      queryClient.setQueryData(adminPlacesQuery.queryKey, (current = []) => [
-        created,
-        ...current.filter(place => place.id !== created.id),
-      ].slice(0, 20));
-      setName(''); setAddress(''); setDescription(''); setLatitude(''); setLongitude('');
-      setNotice(`장소 #${created.id}을 비공개 초안으로 저장했어요.`);
-    } catch { setError('장소 초안을 저장하지 못했어요. 입력값을 확인한 뒤 다시 시도해 주세요.'); }
-    finally { setBusy(false); }
+  function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (draft.isPending || !regionId) return;
+
+    draft.mutate({
+      regionId: Number(regionId),
+      name: name.trim(),
+      address: address.trim(),
+      description: description.trim(),
+      latitude: Number(latitude),
+      longitude: Number(longitude),
+    }, {
+      onSuccess: () => {
+        setName('');
+        setAddress('');
+        setDescription('');
+        setLatitude('');
+        setLongitude('');
+      },
+    });
   }
 
   return <div><header className="admin-header"><div><p>OUTPICK · PLACES</p>
@@ -51,7 +63,7 @@ export default function AdminPlaces() {
   {loading && <p role="status">장소 정보를 불러오고 있어요.</p>}
   {loadFailed && <p role="alert" className="admin-error">장소 정보를 불러오지 못했어요. 새로고침해 주세요.</p>}
   {showFormAndList && <div className="admin-placeLayout">
-    <form className="admin-placeForm" onSubmit={event => void submit(event)}>
+    <form className="admin-placeForm" onSubmit={submit}>
       <h2>새 장소</h2><p>먼저 이름, 위치, 소개를 입력해 주세요.</p>
       <label>지역<select required value={regionId} onChange={event => setSelectedRegionId(event.target.value)}>
         {regions.map(region => <option key={region.id} value={region.id}>{region.name}</option>)}</select></label>
@@ -66,9 +78,9 @@ export default function AdminPlaces() {
           onChange={event => setLongitude(event.target.value)} /></label>
       </div>
       <p className="admin-hint">좌표를 확인한 뒤 입력해 주세요. 이 단계에서는 공개되지 않습니다.</p>
-      {error && <p role="alert" className="admin-error">{error}</p>}
-      {notice && <p role="status" className="admin-notice">{notice}</p>}
-      <button disabled={busy || regions.length === 0} type="submit">{busy ? '저장 중...' : '비공개 초안 저장'}</button>
+      {draft.isError && <p role="alert" className="admin-error">장소 초안을 저장하지 못했어요. 입력값을 확인한 뒤 다시 시도해 주세요.</p>}
+      {draft.isSuccess && <p role="status" className="admin-notice">장소 #{draft.data.id}을 비공개 초안으로 저장했어요.</p>}
+      <button disabled={draft.isPending || !regionId} type="submit">{draft.isPending ? '저장 중...' : '비공개 초안 저장'}</button>
     </form>
     <section className="admin-placeList"><h2>최근 등록한 장소</h2>
       {places.length === 0 ? <p>등록된 장소가 없습니다.</p> : <ul>{places.map(place => <li key={place.id}>
