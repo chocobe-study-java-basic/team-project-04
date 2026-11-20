@@ -1,4 +1,3 @@
-.outpick-explorer-header { font-family: Arial, 'Malgun Gothic', sans-serif; }
 .outpick-explorer-header button, .outpick-explorer-header select, .outpick-explorer-header input { font: inherit; }
 .outpick-explorer-header button, .outpick-explorer-header select { cursor: pointer; }
 .outpick-explorer-header button:focus-visible, .outpick-explorer-header a:focus-visible, .outpick-explorer-header input:focus-visible, .outpick-explorer-header select:focus-visible { outline: 3px solid #5147ff; outline-offset: 4px; }
