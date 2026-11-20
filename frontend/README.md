@@ -414,7 +414,7 @@ Query Key는 각 Hook에 문자열로 흩어 놓지 않고 도메인의 `queries
 
 운영자로 로그인해 사이드바에서 새 메뉴를 선택한다. 본문과 현재 메뉴 표시를 확인하고, 같은 주소에 직접 접속하거나 새로고침해도 페이지가 열리는지 확인한다.
 
-마이페이지에 화면을 추가할 때는 `src/app/(service)/(account)/mypage/` 아래에 `page.tsx`를 두고, 메뉴에 표시할 경우 공통 목록에 등록한다. 운영자는 두 화면에서 공통 메뉴 아래에 관리자 메뉴를 함께 본다. [서비스 레이아웃](<src/app/(service)/layout.tsx>) · [회원 공통 레이아웃](<src/app/(service)/(account)/layout.tsx>) · [마이페이지 로그인 확인](<src/app/(service)/(account)/mypage/layout.tsx>)
+일반 회원 전용 화면은 `mypage/(member)/` 아래에 추가하고 사이드바 링크는 `memberNavigationItems`에 등록한다. 상위 마이페이지 레이아웃은 로그인 여부를 확인하고, `(member)`의 레이아웃은 일반 회원 역할을 확인한다. 관리자는 공통 메뉴의 마이페이지와 관리자 메뉴를 본다. [마이페이지 로그인 확인](<src/app/(service)/(account)/mypage/layout.tsx>) · [일반 회원 접근 확인](<src/app/(service)/(account)/mypage/(member)/layout.tsx>)
 
 ### 장소 상세 URL과 메타정보
 

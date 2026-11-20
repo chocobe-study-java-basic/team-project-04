@@ -12,7 +12,7 @@ describe('공통 사이드바', () => {
   it('일반 회원에게 공통 메뉴만 표시하고 현재 페이지를 강조한다', () => {
     vi.mocked(usePathname).mockReturnValue('/mypage/favorites');
 
-    render(<AccountSidebar showAdminMenu={false} />);
+    render(<AccountSidebar role="USER" />);
 
     const menu = within(screen.getByRole('navigation', { name: '공통 메뉴' }));
     expect(menu.getAllByRole('link').map(link => link.textContent)).toEqual(['마이페이지', '내 제보 상태', '관심 장소', '알림함']);
@@ -30,10 +30,11 @@ describe('공통 사이드바', () => {
   ])('운영자에게 두 메뉴를 표시하고 %s에서 %s 항목만 강조한다', (pathname, label) => {
     vi.mocked(usePathname).mockReturnValue(pathname);
 
-    render(<AccountSidebar showAdminMenu />);
+    render(<AccountSidebar role="ADMIN" />);
 
     const menu = within(screen.getByRole('navigation', { name: '관리자 메뉴' }));
-    expect(screen.getByRole('navigation', { name: '공통 메뉴' })).toBeTruthy();
+    const commonMenu = within(screen.getByRole('navigation', { name: '공통 메뉴' }));
+    expect(commonMenu.getAllByRole('link').map(link => link.textContent)).toEqual(['마이페이지']);
     expect(menu.getAllByRole('link').map(link => link.textContent)).toEqual(['운영 현황', '장소 관리', '공지 관리', '오류 제보', '후기 신고']);
     expect(screen.getAllByRole('link', { current: 'page' })).toEqual([screen.getByRole('link', { name: label })]);
   });

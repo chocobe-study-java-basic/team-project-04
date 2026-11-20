@@ -2,6 +2,9 @@ import { Bell, Bookmark, CircleUserRound, Flag, LayoutDashboard, MapPin, Megapho
 
 export const commonNavigationItems = [
   { label: '마이페이지', href: '/mypage/', Icon: CircleUserRound },
+];
+
+export const memberNavigationItems = [
   { label: '내 제보 상태', href: '/mypage/place-reports/', Icon: Flag },
   { label: '관심 장소', href: '/mypage/favorites/', Icon: Bookmark },
   { label: '알림함', href: '/mypage/notifications/', Icon: Bell },
