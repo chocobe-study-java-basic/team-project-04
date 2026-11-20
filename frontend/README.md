@@ -289,7 +289,7 @@ React Testing Library 16.3.3·user-event 14.6.9·jsdom 31.0.0을 사용한다. �
 
 실제 QueryProvider로 화면을 감싸고 MSW로 응답을 재현한다. `setup-dom.ts`는 테스트마다 화면을 해제하고 Query 캐시·타이머를 정리한다. jsdom 주소는 모의 API와 같은 `https://api.outpick.test`로 지정했다. 실제 브라우저의 CORS·쿠키 정책은 검증하지 않는다.
 
-관리자 접근 확인은 로딩, 접근 거절, 권한 확인에 성공했을 때의 화면을 검증한다. [관리자 접근 테스트](src/domains/admin/components/AdminAccess/AdminAccess.test.tsx)
+관리자 접근 확인은 로딩, 권한이 있을 때의 화면, 접근 제한에 따른 이동을 검증한다. [관리자 접근 테스트](src/domains/admin/components/AdminAccess/AdminAccess.test.tsx)
 
 참고: [TanStack Query Provider 구성](https://tanstack.com/query/latest/docs/framework/react/guides/advanced-ssr), [React Testing Library API](https://testing-library.com/docs/react-testing-library/api/).
 
@@ -415,6 +415,8 @@ Query Key는 각 Hook에 문자열로 흩어 놓지 않고 도메인의 `queries
 운영자로 로그인해 사이드바에서 새 메뉴를 선택한다. 본문과 현재 메뉴 표시를 확인하고, 같은 주소에 직접 접속하거나 새로고침해도 페이지가 열리는지 확인한다.
 
 일반 회원 전용 화면은 `mypage/(member)/` 아래에 추가하고 사이드바 링크는 `memberNavigationItems`에 등록한다. 상위 마이페이지 레이아웃은 로그인 여부를 확인하고, `(member)`의 레이아웃은 일반 회원 역할을 확인한다. 관리자는 공통 메뉴의 마이페이지와 관리자 메뉴를 본다. [마이페이지 로그인 확인](<src/app/(service)/(account)/mypage/layout.tsx>) · [일반 회원 접근 확인](<src/app/(service)/(account)/mypage/(member)/layout.tsx>)
+
+보호 페이지는 `ProtectedPage`에서 현재 회원을 확인한다. 비로그인 상태에서는 `/login/`으로, 다른 역할의 전용 주소를 열면 `/mypage/`로 이동한다. 두 경우 모두 현재 방문 기록을 교체한다. [보호 페이지 접근 처리](src/domains/member/components/ProtectedPage.tsx)
 
 ### 장소 상세 URL과 메타정보
 

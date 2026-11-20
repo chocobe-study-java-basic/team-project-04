@@ -34,22 +34,22 @@ describe('일반 회원 전용 페이지 접근', () => {
     renderMemberPage();
 
     expect(await screen.findByRole('heading', { name: pageHeading })).toBeTruthy();
+    expect(replace).not.toHaveBeenCalled();
   });
 
-  it('관리자가 전용 페이지를 열면 본문 대신 권한 안내와 마이페이지 링크를 표시한다', async () => {
+  it('관리자가 전용 페이지를 열면 마이페이지로 보내고 전용 본문을 숨긴다', async () => {
     server.use(http.get(memberUrl, () => HttpResponse.json({ id: 2, role: 'ADMIN' })));
     renderMemberPage();
 
-    expect(await screen.findByRole('heading', { name: '일반 회원 전용 페이지입니다' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: '마이페이지로 돌아가기' }).getAttribute('href')).toMatch(/^\/mypage\/?$/);
-    expect(screen.queryByRole('heading', { name: pageHeading })).toBeNull();
+    await waitFor(() => expect(replace).toHaveBeenCalledExactlyOnceWith('/mypage/'));
+    expect(screen.queryByRole('heading')).toBeNull();
   });
 
-  it('비로그인 상태에서 전용 페이지를 열면 본문을 숨기고 기존 로그인 경로로 이동한다', async () => {
+  it('비로그인 상태에서 전용 페이지를 열면 복귀 경로 없이 로그인으로 보낸다', async () => {
     server.use(http.get(memberUrl, () => new HttpResponse(null, { status: 401 })));
     renderMemberPage();
 
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/login/?next=%2Fmypage%2F'));
+    await waitFor(() => expect(replace).toHaveBeenCalledExactlyOnceWith('/login/'));
     expect(screen.queryByRole('heading', { name: pageHeading })).toBeNull();
   });
 });

@@ -35,7 +35,6 @@
 .admin-placeList li small { display: block; margin-top: 7px; color: #8190a1; }
 .admin-status { padding: 4px 8px; border-radius: 20px; background: #f0efff; color: #5147d9; font-size: 11px; }
 .admin-status-published { background: #e8f7ef; color: #267454; }
-.admin-access { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 12px; }
 @media (max-width: 1023px) { .admin-placeLayout { grid-template-columns: 1fr; } }
 @media (max-width: 720px) { .admin-shell { padding: 32px 18px 70px; } .admin-header { flex-direction: column; } .admin-stats, .admin-actions { grid-template-columns: 1fr; } }
 
