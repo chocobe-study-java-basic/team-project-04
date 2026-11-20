@@ -1,25 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { getAdminSummary, type AdminSummary } from '../api/adminApi';
+import { useQuery } from '@tanstack/react-query';
+import { adminSummaryQuery } from '../queries/adminSummaryQuery';
 
 export default function AdminDashboard() {
-  const [summary, setSummary] = useState<AdminSummary | null>(null);
-  const [error, setError] = useState(false);
-  useEffect(() => {
-    let active = true;
-    getAdminSummary().then(data => { if (active) setSummary(data); })
-      .catch(() => { if (active) setError(true); });
-    return () => { active = false; };
-  }, []);
+  const { data: summary, isPending, isError } = useQuery(adminSummaryQuery);
 
   return <div className="admin-dashboard">
     <section className="admin-dashboardHero"><div><p>MANAGE THE OUTSIDE</p><h1>오늘의 운영 현황</h1>
       <span>검토가 필요한 내용을 확인하고 새 장소를 준비하세요.</span></div>
     <div className="admin-dashboardHeroArt" aria-hidden="true"><i /><i /><i /></div></section>
-    {error && <p role="alert" className="admin-error">현황을 불러오지 못했어요. 새로고침해 주세요.</p>}
-    {!summary && !error && <p role="status">운영 현황을 불러오고 있어요.</p>}
+    {isError && <p role="alert" className="admin-error">현황을 불러오지 못했어요. 새로고침해 주세요.</p>}
+    {isPending && <p role="status">운영 현황을 불러오고 있어요.</p>}
     {summary && <section className="admin-dashboardStats" aria-label="운영 현황">
       <div className="is-alert"><span>처리 대기</span><strong>{summary.pendingReports}</strong><small>후기 신고</small></div>
       <div><span>등록 준비</span><strong>{summary.draftPlaces}</strong><small>비공개 장소 초안</small></div>
