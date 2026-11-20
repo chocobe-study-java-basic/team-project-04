@@ -55,7 +55,7 @@ export function LoginScreen() {
   return <AccountFrame><Header step="WELCOME BACK" title="다시 만나 반가워요" description="로그인하면 계정 정보를 확인하고 장소 탐색을 이어갈 수 있어요." />
     <form className={`account-panel account-form${error ? ' has-error' : ''}`} onSubmit={submit}>
       {notice && <p className="account-alert success" role="status">{notice}</p>}
-      <FloatingField label="이메일" type="email" value={email} onChange={setEmail} autoComplete="email" disabled={busy || success} />
+      <FloatingField label="이메일" type="email" value={email} onChange={setEmail} autoComplete="email" disabled={busy || success} autoFocus />
       <FloatingField label="비밀번호" type="password" value={password} onChange={setPassword} autoComplete="current-password" disabled={busy || success} />
       {error && <p className="account-alert" role="alert">{error}</p>}
       <Submit busy={busy} success={success}>로그인</Submit>
@@ -86,7 +86,7 @@ export function SignupScreen() {
   }
   return <AccountFrame><Header step="JOIN OUTPICK" title="다음 외출을 함께해요" description="이메일로 계정을 만들고 장소 탐색을 시작해 보세요." />
     <form className={`account-panel account-form${error ? ' has-error' : ''}`} onSubmit={submit}>
-      <FloatingField label="이메일" type="email" value={email} onChange={setEmail} autoComplete="email" disabled={busy || success} />
+      <FloatingField label="이메일" type="email" value={email} onChange={setEmail} autoComplete="email" disabled={busy || success} autoFocus />
       <FloatingField label="닉네임" value={nickname} onChange={setNickname} autoComplete="nickname" disabled={busy || success} />
       <FloatingField label="비밀번호" type="password" value={password} onChange={value => { setPassword(value); setConfirmationError(''); }} autoComplete="new-password" minLength={8} maxLength={64} disabled={busy || success} />
       <p className="account-field-note">비밀번호는 8~64자로 입력해 주세요.</p>

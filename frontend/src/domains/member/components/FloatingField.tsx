@@ -15,9 +15,10 @@ type Props = {
   disabled?: boolean;
   minLength?: number;
   maxLength?: number;
+  autoFocus?: boolean;
 };
 
-export default function FloatingField({ label, value, onChange, type = 'text', autoComplete, error, required = true, disabled = false, minLength, maxLength }: Props) {
+export default function FloatingField({ label, value, onChange, type = 'text', autoComplete, error, required = true, disabled = false, minLength, maxLength, autoFocus: autoFocus }: Props) {
   const id = useId();
   const [focused, setFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -28,7 +29,7 @@ export default function FloatingField({ label, value, onChange, type = 'text', a
       <div className="u025-box">
         <input id={id} className="u025-in" type={type === 'password' && showPassword ? 'text' : type}
           value={value} onChange={event => onChange(event.target.value)} onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)} autoComplete={autoComplete} required={required} disabled={disabled} minLength={minLength} maxLength={maxLength} aria-invalid={Boolean(error)}
+          onBlur={() => setFocused(false)} autoComplete={autoComplete} autoFocus={autoFocus} required={required} disabled={disabled} minLength={minLength} maxLength={maxLength} aria-invalid={Boolean(error)}
           aria-describedby={error ? `${id}-error` : undefined} />
         <span className="u025-line" aria-hidden="true" style={{ '--gap': up ? `${label.length * 9 + 6}px` : '0px' } as CSSProperties}><i className="l" /><i className="g" /><i className="r" /></span>
         <label className="u025-lab" htmlFor={id}>{label}</label>
