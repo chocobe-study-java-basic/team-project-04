@@ -1,7 +1,7 @@
 .outpick-explorer-header button, .outpick-explorer-header select, .outpick-explorer-header input { font: inherit; }
 .outpick-explorer-header button, .outpick-explorer-header select { cursor: pointer; }
 .outpick-explorer-header button:focus-visible, .outpick-explorer-header a:focus-visible, .outpick-explorer-header input:focus-visible, .outpick-explorer-header select:focus-visible { outline: 3px solid #5147ff; outline-offset: 4px; }
-.outpick-search { display: flex; align-items: center; gap: 12px; width: min(550px, 48%); margin: 0 auto; padding: 7px 10px 7px 18px; border: 1px solid transparent; border-radius: 28px; background: #f3f5f8; color: #8191a7; }
+.outpick-search { display: flex; align-items: center; gap: 12px; width: min(550px, 48%); margin: 0 auto; padding: 5px 10px 5px 18px; border: 1px solid transparent; border-radius: 28px; background: #f3f5f8; color: #8191a7; }
 .outpick-search:focus-within { border-color: #b8b4ff; }
 .outpick-search input { width: 100%; min-width: 0; padding: 6px 0; background: transparent; color: #16243b; outline: none; font-size: 13px; }
 .outpick-search button { flex-shrink: 0; padding: 7px 14px; border-radius: 20px; background: #fff; color: #5147ff; font-size: 12px; font-weight: 700; }
