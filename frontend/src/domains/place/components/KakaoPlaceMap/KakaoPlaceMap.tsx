@@ -6,6 +6,9 @@ import { sameMapView } from '../../lib/placeMapParams';
 import type { KakaoMap, KakaoMapsApi, KakaoOverlay, PlaceMapBounds, PlaceMapView, PlaceMapItem, PlaceMapSelection } from '../../types/kakaoMap.type';
 import './KakaoPlaceMap.css';
 
+export const mapMessageClassName = 'absolute inset-x-[18px] top-[28%] z-[3] rounded-xl border border-[#e4e9f1] bg-[#fffffff5] p-5 text-center text-[13px]/[1.8] text-[#63718a]';
+export const mapRetryButtonClassName = 'mt-[15px] cursor-pointer rounded-lg bg-[#5147ff] px-3.5 py-[9px] text-xs/[1.8] text-white';
+
 type MapContext = { api: KakaoMapsApi; map: KakaoMap; moveWithoutSearch: (move: () => void) => void };
 type Pin = { place: PlaceMapItem; overlay: KakaoOverlay; button: HTMLButtonElement; dispose: () => void };
 
@@ -239,20 +242,20 @@ export default function KakaoPlaceMap({ places, totalPlaces, searchingArea = fal
   }, [context, selection]);
 
   return (
-    <div className="outpick-mapStage">
-      <div ref={container} className="outpick-mapCanvas" role="region" aria-label="장소 지도" />
-      <p className="outpick-mapDisclaimer" role="status">
+    <div className="relative size-full bg-[#edf1f5]">
+      <div ref={container} className="absolute inset-0" role="region" aria-label="장소 지도" />
+      <p className="pointer-events-none absolute top-4 left-4 z-[2] rounded-lg bg-[#fffffff0] px-3 py-2 text-[11px] text-[#596a7e] shadow-[0_2px_8px_#16243b12]" role="status">
         {searchingArea ? '이 영역의 장소를 찾는 중' : totalPlaces !== undefined && totalPlaces > places.length
           ? `${totalPlaces}곳 중 ${places.length}곳을 표시 중이에요. 지도를 확대해 좁은 범위를 살펴보세요.`
           : '지도 범위의 장소를 표시합니다'}
         {places.some(place => place.name.startsWith('[데모]')) && ' · 데모 좌표는 실제 시설 위치가 아닙니다'}
       </p>
-      {!context && !error && <p className="outpick-mapMessage" role="status">지도를 불러오고 있어요.</p>}
+      {!context && !error && <p className={mapMessageClassName} role="status">지도를 불러오고 있어요.</p>}
       {error && (
-        <div className="outpick-mapMessage" role="alert">
+        <div className={mapMessageClassName} role="alert">
           <p>지도를 불러오지 못했어요. 목록으로 계속 살펴볼 수 있어요.</p>
-          <p>카카오맵 사용 설정·허용 도메인 또는 네트워크 연결을 확인해 주세요.</p>
-          <button type="button" onClick={() => { setError(false); setContext(null); setAttempt(value => value + 1); }}>지도 다시 불러오기</button>
+          <p className="mt-2 text-[11px]">카카오맵 사용 설정·허용 도메인 또는 네트워크 연결을 확인해 주세요.</p>
+          <button className={mapRetryButtonClassName} type="button" onClick={() => { setError(false); setContext(null); setAttempt(value => value + 1); }}>지도 다시 불러오기</button>
         </div>
       )}
     </div>

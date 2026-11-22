@@ -12,7 +12,8 @@ import PlaceExplorer from './PlaceExplorer';
 import { rememberPlaceListPosition } from '@/domains/place/lib/placeNavigation';
 import type { PlaceMapBounds, PlaceMapItem, PlaceMapSelection, PlaceMapView } from '@/domains/place/types/kakaoMap.type';
 
-vi.mock('@/domains/place/components/KakaoPlaceMap/KakaoPlaceMap', () => ({
+vi.mock('@/domains/place/components/KakaoPlaceMap/KakaoPlaceMap', async importOriginal => ({
+  ...await importOriginal<typeof import('@/domains/place/components/KakaoPlaceMap/KakaoPlaceMap')>(),
   default: ({ places, totalPlaces, onBoundsChange, onSelect, view, selection }: {
     places: PlaceMapItem[];
     totalPlaces?: number;

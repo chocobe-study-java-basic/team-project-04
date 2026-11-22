@@ -20,7 +20,12 @@ function SearchForm({ initialQuery }: { initialQuery: string }) {
   }
 
   return (
-    <form id={placeSearchFormId} className="outpick-search" onSubmit={submitSearch} role="search"
+    <form
+      id={placeSearchFormId}
+      className="order-3 mx-auto flex w-full items-center gap-3 rounded-[28px] border border-transparent
+        bg-[#f3f5f8] py-[5px] pr-2.5 pl-[18px] text-[#8191a7] focus-within:border-[#b8b4ff] md:order-none"
+      onSubmit={submitSearch}
+      role="search"
       onReset={event => {
         event.preventDefault();
         setQuery('');
@@ -31,8 +36,16 @@ function SearchForm({ initialQuery }: { initialQuery: string }) {
         <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.6" />
         <path d="m16 16 4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
-      <input id="place-search" value={query} onChange={event => setQuery(event.target.value)} placeholder="어떤 장소를 찾고 있나요?" />
-      <button type="submit">검색</button>
+      <input
+        id="place-search"
+        className="w-full min-w-0 bg-transparent py-1.5 text-[13px] text-[#16243b] outline-none focus-visible:outline-solid"
+        value={query}
+        onChange={event => setQuery(event.target.value)}
+        placeholder="어떤 장소를 찾고 있나요?"
+      />
+      <button type="submit" className="shrink-0 cursor-pointer rounded-[20px] bg-white px-3.5 py-[7px] text-[12px] font-bold text-[#5147ff]">
+        검색
+      </button>
     </form>
   );
 }
