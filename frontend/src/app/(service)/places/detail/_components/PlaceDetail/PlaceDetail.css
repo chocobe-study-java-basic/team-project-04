@@ -1,8 +1,4 @@
-.outpick-detail { min-height: 100vh; background: #fff; color: #16243b; }
 .outpick-detail a:focus-visible { outline: 3px solid #5147ff; outline-offset: 4px; }
-.outpick-detailHeader { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px 36px; border-bottom: 1px solid #e9edf3; }
-.outpick-detailBrand { color: #5147ff; font-size: 25px; font-weight: 800; letter-spacing: -1px; text-decoration: none; }
-.outpick-detailHeader > span { color: #8793a7; font-size: 12px; }
 .outpick-detailMain { max-width: 1160px; margin: auto; padding: 28px 36px; }
 .outpick-backLink { display: inline-block; padding: 8px 0; color: #6156cc; font-size: 13px; text-decoration: none; }
 .outpick-detailSample { margin-top: 20px; padding: 12px 16px; border-radius: 8px; background: #f5f4ff; color: #716a9b; font-size: 12px; line-height: 1.8; }
@@ -29,7 +25,7 @@
 .outpick-activityList li { padding: 15px 18px; margin-top: 10px; border: 1px solid #e9edf3; border-radius: 10px; }
 .outpick-activityList h3 { font-size: 14px; font-weight: 700; }
 .outpick-activityList p { margin-top: 7px; color: #718096; font-size: 12px; line-height: 1.7; }
-.outpick-visitInfo { position: sticky; top: 24px; padding: 25px; border: 1px solid #e9edf3; border-radius: 14px; background: #fafbfe; }
+.outpick-visitInfo { position: sticky; top: calc(var(--service-header-height) + 24px); padding: 25px; border: 1px solid #e9edf3; border-radius: 14px; background: #fafbfe; }
 .outpick-detailFacts > div { display: grid; grid-template-columns: 95px 1fr; gap: 12px; margin-top: 15px; font-size: 12px; line-height: 1.8; }
 .outpick-detailFacts dt { color: #8793a7; }
 .outpick-detailFacts dd { overflow-wrap: anywhere; }
@@ -40,8 +36,6 @@
 .outpick-detailEmpty h1 { margin-top: 20px; font-size: 26px; font-weight: 700; }
 .outpick-detailEmpty > p:last-child { margin-top: 16px; color: #718096; font-size: 13px; line-height: 1.8; }
 @media (max-width: 767px) {
-  .outpick-detailHeader { padding: 20px; }
-  .outpick-detailHeader > span { font-size: 10px; }
   .outpick-detailMain { padding: 20px; }
   .outpick-detailHero { grid-template-columns: 1fr; gap: 26px; margin-bottom: 32px; }
   .outpick-detailPhoto { grid-row: 1; }

@@ -27,10 +27,6 @@ export default function PlaceDetail() {
 
   return (
     <div className="outpick-detail">
-      <header className="outpick-detailHeader">
-        <Link className="outpick-detailBrand" href="/">OUTPICK</Link>
-        <span>이번 주말, 밖에서 뭐 하지?</span>
-      </header>
       <main className="outpick-detailMain">
         <Link className="outpick-backLink" href={returnUrl} scroll={false}>← 장소 목록으로 돌아가기</Link>
         {missing ? (

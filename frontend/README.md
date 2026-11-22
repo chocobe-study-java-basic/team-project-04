@@ -333,8 +333,9 @@ frontend/src/
 │   ├── layout.tsx                     # html·body·공통 Provider 연결
 │   ├── globals.css
 │   ├── (service)/
-│   │   ├── layout.tsx                 # 검색·회원 영역 공통 헤더
+│   │   ├── layout.tsx                 # 서비스 화면 공통 헤더
 │   │   ├── page.tsx                   # 장소 탐색 /
+│   │   ├── places/detail/             # /places/detail/
 │   │   └── (account)/
 │   │       ├── layout.tsx             # 공통 사이드바와 본문
 │   │       ├── _components/AccountSidebar/
@@ -347,8 +348,7 @@ frontend/src/
 │   │   ├── signup/
 │   │   ├── password-reset/
 │   │   └── reset-password/
-│   ├── _providers/QueryProvider.tsx
-│   └── places/detail/                 # /places/detail/
+│   └── _providers/QueryProvider.tsx
 ├── domains/
 │   ├── example/                       # HTTP 통신·조회 Hook 예제
 │   ├── member/                        # 로그인·회원 조회
@@ -395,11 +395,12 @@ Query Key는 각 Hook에 문자열로 흩어 놓지 않고 도메인의 `queries
 
 ### 레이아웃과 서비스 URL
 
-최상위 `app/layout.tsx`는 `html`, `body`, 공통 Provider를 제공한다. `(service)`는 장소 검색과 회원 영역의 공통 헤더를 제공하고, 하위의 `(account)`는 마이페이지와 관리자 화면의 사이드바를 공유한다. `(minimal)`은 로그인 등 인증 화면의 본문을 표시한다.
+최상위 `app/layout.tsx`는 `html`, `body`, 공통 Provider를 제공한다. `(service)`는 장소 탐색, 장소 상세, 마이페이지, 관리자 화면에서 상단에 유지되는 공통 헤더를 제공한다. 장소 검색창은 장소 탐색에서 표시한다. `(account)`는 마이페이지와 관리자 화면의 사이드바를 공유한다. `(minimal)`은 로그인 등 인증 화면의 본문을 표시한다.
 
 | 서비스 URL | 레이아웃 |
 |---|---|
 | `/` | 공통 헤더와 장소 탐색 |
+| `/places/detail/` | 공통 헤더와 장소 상세 본문 |
 | `/mypage/`, `/admin/` | 공통 헤더, 사이드바와 본문 |
 | `/login/` | 인증 화면 본문 |
 

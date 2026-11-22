@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import '../../../../../../tests/setup-dom';
+import '../../../../../../../tests/setup-dom';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { PlaceOperatingInfoData } from '@/domains/place/types/placeApi.type';
