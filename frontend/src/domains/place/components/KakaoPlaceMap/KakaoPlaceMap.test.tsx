@@ -68,6 +68,14 @@ afterEach(() => {
 });
 
 describe('카카오 장소 지도', () => {
+  it('검색 결과가 지도에 표시한 수보다 많으면 확대를 안내한다', () => {
+    const { api } = createFakeSdk();
+    vi.mocked(loadKakaoMaps).mockResolvedValue(api);
+    const places = Array.from({ length: 50 }, (_, index) => ({ ...samplePlaces[0], id: index + 1 }));
+    render(<KakaoPlaceMap places={places} totalPlaces={72} selection={null} onSelect={vi.fn()} />);
+    expect(screen.getByText('72곳 중 50곳을 표시 중이에요. 지도를 확대해 좁은 범위를 살펴보세요.')).toBeTruthy();
+  });
+
   it('SDK 실패를 안내하고 다시 불러오면 지도를 표시한다', async () => {
     const { api } = createFakeSdk();
     vi.mocked(loadKakaoMaps).mockRejectedValueOnce(new Error('failed')).mockResolvedValueOnce(api);

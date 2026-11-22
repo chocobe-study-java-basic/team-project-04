@@ -6,18 +6,25 @@ export const seasonCodes: Record<string, string> = { 봄: 'SPRING', 여름: 'SUM
 export const environmentCodes: Record<string, string> = { 실내: 'INDOOR', 실외: 'OUTDOOR' };
 export const seasonLabel = (value: string) => Object.entries(seasonCodes).find(([, code]) => code === value)?.[0] ?? value;
 export const environmentLabel = (value: string | null) => Object.entries(environmentCodes).find(([, code]) => code === value)?.[0] ?? value ?? '실내외 미확인';
+export const placeListPageSize = 20;
 
 export async function getPlaceCatalog(signal?: AbortSignal): Promise<PlaceCatalog> {
   return (await apiClient.get<PlaceCatalog>('/api/v1/places/filters', { signal })).data;
 }
 
-export async function searchPlaces(selection: PlaceSelection, catalog: PlaceCatalog, bounds: PlaceMapBounds | null, page: number, signal?: AbortSignal): Promise<PlacePage> {
+export async function searchPlaces(
+  selection: PlaceSelection,
+  catalog: PlaceCatalog,
+  bounds: PlaceMapBounds | null,
+  { page, size = placeListPageSize }: { page: number; size?: number },
+  signal?: AbortSignal
+): Promise<PlacePage> {
   const region = catalog.regions.find(item => item.name === selection.region);
   const category = catalog.categories.find(item => item.name === selection.category);
   if ((selection.region && !region) || (selection.category !== '전체' && !category?.activityTypeIds.length)) {
-    return { items: [], page, size: 20, totalElements: 0 };
+    return { items: [], page, size, totalElements: 0 };
   }
-  const params = new URLSearchParams({ page: String(page), size: '20', sort: selection.sort });
+  const params = new URLSearchParams({ page: String(page), size: String(size), sort: selection.sort });
   if (selection.query) params.set('query', selection.query);
   if (region) params.set('regionId', String(region.id));
   if (selection.category !== '전체') category?.activityTypeIds.forEach(id => params.append('activityTypeIds', String(id)));

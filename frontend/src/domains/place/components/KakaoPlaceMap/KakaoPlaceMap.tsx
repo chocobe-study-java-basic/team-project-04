@@ -21,8 +21,9 @@ function fitPlaces({ api, map }: Pick<MapContext, 'api' | 'map'>, places: PlaceM
   map.setBounds(bounds, 70, 30, 180, 30);
 }
 
-export default function KakaoPlaceMap({ places, selection, onSelect, onBoundsChange, view = null, hasSearchBounds = false }: {
+export default function KakaoPlaceMap({ places, totalPlaces, selection, onSelect, onBoundsChange, view = null, hasSearchBounds = false }: {
   places: PlaceMapItem[];
+  totalPlaces?: number;
   selection: PlaceMapSelection | null;
   onSelect: (selection: PlaceMapSelection) => void;
   onBoundsChange?: (bounds: PlaceMapBounds, view: PlaceMapView) => void;
@@ -207,7 +208,12 @@ export default function KakaoPlaceMap({ places, selection, onSelect, onBoundsCha
   return (
     <div className="outpick-mapStage">
       <div ref={container} className="outpick-mapCanvas" role="region" aria-label="장소 지도" />
-      <p className="outpick-mapDisclaimer">{places.some(place => place.name?.startsWith('[데모]')) ? '현재 페이지의 장소 · 데모 좌표는 실제 시설 위치가 아닙니다' : '현재 페이지의 장소를 표시합니다'}</p>
+      <p className="outpick-mapDisclaimer">
+        {totalPlaces !== undefined && totalPlaces > places.length
+          ? `${totalPlaces}곳 중 ${places.length}곳을 표시 중이에요. 지도를 확대해 좁은 범위를 살펴보세요.`
+          : '지도 범위의 장소를 표시합니다'}
+        {places.some(place => place.name.startsWith('[데모]')) && ' · 데모 좌표는 실제 시설 위치가 아닙니다'}
+      </p>
       {!context && !error && <p className="outpick-mapMessage" role="status">지도를 불러오고 있어요.</p>}
       {error && (
         <div className="outpick-mapMessage" role="alert">

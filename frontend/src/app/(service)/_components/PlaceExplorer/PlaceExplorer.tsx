@@ -9,6 +9,7 @@ import PlacePhoto, { PlacePhotoCredit } from '@/domains/place/components/PlacePh
 import CopyPlaceLinkButton from '@/domains/place/components/CopyPlaceLinkButton/CopyPlaceLinkButton';
 import KakaoPlaceMap from '@/domains/place/components/KakaoPlaceMap/KakaoPlaceMap';
 import type { PlaceMapBounds, PlaceMapSelection, PlaceMapView } from '@/domains/place/types/kakaoMap.type';
+import { placeListPageSize } from '@/domains/place/api/placeApi';
 import { readPlaceMapBounds, readPlaceMapParams, writePlaceMapParams } from '@/domains/place/lib/placeMapParams';
 import { usePlaces } from '@/domains/place/hooks/usePlaces';
 import { getPlaceDetailUrl, rememberPlaceListPosition, takePlaceListPosition } from '@/domains/place/lib/placeNavigation';
@@ -25,20 +26,23 @@ export default function PlaceExplorer() {
   const mapView = readPlaceMapParams(searchParams);
   const rawPage = searchParams.get('page') ?? '0';
   const page = /^\d+$/.test(rawPage) && Number(rawPage) <= 1000000 ? Number(rawPage) : 0;
-  const { catalog, places: placeQuery } = usePlaces({ query: search, category, region, season, environment, sort }, mapBounds, page);
+  const { catalog, places: placeQuery, markers: markerQuery } = usePlaces({ query: search, category, region, season, environment, sort }, mapBounds, page);
   const loading = catalog.isPending || placeQuery.isPending;
   const failed = catalog.isError || placeQuery.isError;
   const categories = ['전체', ...(catalog.data?.categories.map(item => item.name) ?? [])];
   const places = useMemo(() => (placeQuery.data?.items ?? []).map(place => ({
     ...place, name: place.name ?? '이름 미확인',
   })), [placeQuery.data]);
-  const mapPlaces = useMemo(() => places.flatMap(place => place.latitude !== null && place.longitude !== null
-    ? [{ id: place.id, name: place.name, latitude: place.latitude, longitude: place.longitude }] : []), [places]);
+  // 첫 지도 범위를 잡기 전까지는 목록의 위치를 사용합니다.
+  const markerItems = mapBounds ? markerQuery.data?.items : placeQuery.data?.items;
+  const mapPlaces = useMemo(() => (markerItems ?? []).flatMap(place => place.latitude !== null && place.longitude !== null
+    ? [{ id: place.id, name: place.name ?? '이름 미확인', latitude: place.latitude, longitude: place.longitude }] : []), [markerItems]);
   const selectedPlace = places.find(place => place.id === selection?.id);
+  const selectedMapPlace = selectedPlace ?? markerItems?.find(place => place.id === selection?.id);
 
   const selectMapMarker = useCallback((nextSelection: PlaceMapSelection) => {
     setSelection(nextSelection);
-    setMobileMap(false);
+    if (placeList.current?.querySelector(`[data-place-id="${nextSelection.id}"]`)) setMobileMap(false);
   }, []);
 
   useEffect(() => {
@@ -128,7 +132,7 @@ export default function PlaceExplorer() {
             <CopyPlaceLinkButton label="검색 링크 복사" />
           </div>
           {places.some(place => place.name?.startsWith('[데모]')) && <p className="outpick-sampleNotice">[데모] 표시는 가상 장소이며 실제 시설 정보가 아닙니다.</p>}
-          <p className="outpick-sampleNotice">지도를 이동하면 자동 검색해요. 지도에는 현재 페이지의 장소만 표시돼요.</p>
+          <p className="outpick-sampleNotice">지도를 이동하면 자동 검색해요.</p>
           {failed ? <div className="outpick-empty" role="alert"><h2>장소를 불러오지 못했어요</h2><p>서버 연결을 확인하고 다시 시도해 주세요.</p><button type="button" onClick={() => { if (catalog.isError) void catalog.refetch(); else void placeQuery.refetch(); }}>다시 시도</button></div> : loading ? <p role="status">장소 정보를 조회하고 있어요.</p> : places.length > 0 ? (
             <ul ref={placeList} className="outpick-cards" aria-label="장소 목록">
               {places.map(place => (
@@ -160,21 +164,27 @@ export default function PlaceExplorer() {
               <button type="reset" form={placeSearchFormId} onClick={resetFilters}>검색 필터 초기화</button>
             </div>
           )}
-          {!loading && !failed && (page > 0 || (placeQuery.data?.totalElements ?? 0) > 20) && <nav className="outpick-pagination" aria-label="검색 결과 페이지">
+          {!loading && !failed && (page > 0 || (placeQuery.data?.totalElements ?? 0) > placeListPageSize) && <nav className="outpick-pagination" aria-label="검색 결과 페이지">
             <button type="button" disabled={page === 0} onClick={() => changePage(page - 1)}>이전</button>
             <span>{page + 1}페이지</span>
-            <button type="button" disabled={(page + 1) * 20 >= (placeQuery.data?.totalElements ?? 0)} onClick={() => changePage(page + 1)}>다음</button>
+            <button type="button" disabled={(page + 1) * placeListPageSize >= (placeQuery.data?.totalElements ?? 0)} onClick={() => changePage(page + 1)}>다음</button>
           </nav>}
           <footer className="outpick-footer">OUTPICK · 이번 주말, 밖에서 뭐 하지?</footer>
         </section>
 
         <aside aria-label="장소 지도" className={`outpick-mapPanel ${!mobileMap ? 'outpick-mapMobileHidden' : ''}`}>
-          <KakaoPlaceMap places={mapPlaces} selection={selectedPlace ? selection : null} onSelect={selectMapMarker} onBoundsChange={changeMapBounds} view={mapView} hasSearchBounds={mapBounds !== null} />
-          {selectedPlace && (
+          <KakaoPlaceMap places={mapPlaces} totalPlaces={markerQuery.data?.totalElements} selection={selectedMapPlace ? selection : null} onSelect={selectMapMarker} onBoundsChange={changeMapBounds} view={mapView} hasSearchBounds={mapBounds !== null} />
+          {markerQuery.isError && (
+            <div className="outpick-mapMessage" role="alert">
+              <p>지도에 표시할 장소를 불러오지 못했어요.</p>
+              <button type="button" onClick={() => void markerQuery.refetch()}>마커 다시 불러오기</button>
+            </div>
+          )}
+          {selectedMapPlace && (
             <div className="outpick-mapSelection" aria-live="polite">
-              <span>선택한 장소</span><h3>{selectedPlace.name}</h3>
-              <p>{selectedPlace.address ?? '주소 미확인'}</p>
-              <Link className="outpick-detailLink" href={getPlaceDetailUrl(selectedPlace.id, listUrl)} onClick={rememberPosition}>장소 상세 보기 →</Link>
+              <span>선택한 장소</span><h3>{selectedMapPlace.name ?? '이름 미확인'}</h3>
+              <p>{selectedMapPlace.address ?? '주소 미확인'}</p>
+              <Link className="outpick-detailLink" href={getPlaceDetailUrl(selectedMapPlace.id, listUrl)} onClick={rememberPosition}>장소 상세 보기 →</Link>
             </div>
           )}
         </aside>

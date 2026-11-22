@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { skipToken, useQuery } from '@tanstack/react-query';
 import { getPlaceCatalog, getPlaceDetail, searchPlaces } from '../api/placeApi';
 import { placeQueryKeys } from '../queries/placeQueryKeys';
 import type { PlaceSelection } from '../types/placeApi.type';
@@ -12,12 +12,21 @@ export function usePlaceCatalog() {
 
 export function usePlaces(selection: PlaceSelection, bounds: PlaceMapBounds | null, page: number) {
   const catalog = usePlaceCatalog();
+  const { data: placeCatalog } = catalog;
+  const { sort, ...filters } = selection;
   const places = useQuery({
-    queryKey: [...placeQueryKeys.list(selection, bounds, page), catalog.data],
-    enabled: !!catalog.data,
-    queryFn: ({ signal }) => searchPlaces(selection, catalog.data!, bounds, page, signal),
+    queryKey: [...placeQueryKeys.list(selection, bounds, page), placeCatalog],
+    queryFn: placeCatalog
+      ? ({ signal }) => searchPlaces({ ...filters, sort }, placeCatalog, bounds, { page }, signal)
+      : skipToken,
   });
-  return { catalog, places };
+  const markers = useQuery({
+    queryKey: [...placeQueryKeys.markers(filters, bounds), placeCatalog],
+    queryFn: placeCatalog && bounds
+      ? ({ signal }) => searchPlaces({ ...filters, sort: 'name' }, placeCatalog, bounds, { page: 0, size: 50 }, signal)
+      : skipToken,
+  });
+  return { catalog, places, markers };
 }
 
 export function usePlaceDetail(id: number) {

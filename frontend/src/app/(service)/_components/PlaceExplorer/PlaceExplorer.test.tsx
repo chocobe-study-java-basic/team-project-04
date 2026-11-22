@@ -12,13 +12,14 @@ import PlaceExplorer from './PlaceExplorer';
 import type { PlaceMapBounds, PlaceMapItem, PlaceMapSelection, PlaceMapView } from '@/domains/place/types/kakaoMap.type';
 
 vi.mock('@/domains/place/components/KakaoPlaceMap/KakaoPlaceMap', () => ({
-  default: ({ places, onBoundsChange, onSelect, view }: {
+  default: ({ places, totalPlaces, onBoundsChange, onSelect, view }: {
     places: PlaceMapItem[];
+    totalPlaces?: number;
     onBoundsChange: (bounds: PlaceMapBounds, view: PlaceMapView) => void;
     onSelect: (selection: PlaceMapSelection) => void;
     view: PlaceMapView | null;
   }) => (
-    <div aria-label="테스트 지도" data-view={JSON.stringify(view)} data-ids={places.map(place => place.id).join(',')}>
+    <div aria-label="테스트 지도" data-view={JSON.stringify(view)} data-ids={places.map(place => place.id).join(',')} data-total={totalPlaces}>
       <button onClick={() => onBoundsChange({ south: 37.37, north: 37.38, west: 128.39, east: 128.66 }, { lat: 37.375, lng: 128.525, level: 8 })}>테스트 지도 이동</button>
       <button onClick={() => onBoundsChange({ south: 38.37, north: 38.38, west: 128.39, east: 128.66 }, { lat: 38.375, lng: 128.525, level: 8 })}>다른 지도 범위로 이동</button>
       {places.map(place => (
@@ -70,7 +71,7 @@ beforeEach(() => {
     http.get(base, ({ request }) => {
       const url = new URL(request.url); requests.push(url);
       const filtered = url.searchParams.has('query') || url.searchParams.has('south');
-      return HttpResponse.json({ items: filtered ? rows.slice(0, 1) : rows, page: Number(url.searchParams.get('page')), size: 20, totalElements: filtered ? 1 : 2 });
+      return HttpResponse.json({ items: filtered ? rows.slice(0, 1) : rows, page: Number(url.searchParams.get('page')), size: Number(url.searchParams.get('size')), totalElements: filtered ? 1 : 2 });
     })
   );
 });
@@ -107,6 +108,55 @@ describe('DB 장소 목록 화면', () => {
     expect(scrollIntoView).toHaveBeenCalledTimes(2);
     expect(requests).toHaveLength(1);
   });
+  it('목록 페이지와 정렬을 변경해도 지도에 같은 첫 50곳을 표시한다', async () => {
+    window.history.replaceState(null, '', '/?lat=37.375&lng=128.525&level=8&south=37.37&west=128.39&north=37.38&east=128.66');
+    const results = Array.from({ length: 72 }, (_, index) => ({
+      ...rows[0], id: index + 1, name: `검증 장소 ${index + 1}`,
+    }));
+    server.use(http.get(base, ({ request }) => {
+      const url = new URL(request.url);
+      requests.push(url);
+      const page = Number(url.searchParams.get('page'));
+      const size = Number(url.searchParams.get('size'));
+      const sorted = url.searchParams.get('sort') === 'name-desc' ? results.toReversed() : results;
+      return HttpResponse.json({ items: sorted.slice(page * size, (page + 1) * size), page, size, totalElements: results.length });
+    }));
+    const user = userEvent.setup();
+    mount();
+    const map = screen.getByLabelText('테스트 지도');
+    const marker = await screen.findByRole('button', { name: '테스트 마커 50' });
+    const markerIds = map.getAttribute('data-ids');
+    expect(markerIds?.split(',')).toHaveLength(50);
+    expect(map.getAttribute('data-total')).toBe('72');
+    expect(screen.queryByRole('button', { name: '테스트 마커 51' })).toBeNull();
+    await screen.findByRole('heading', { name: '검증 장소 1' });
+
+    await user.click(screen.getByRole('button', { name: '다음' }));
+    await screen.findByText('2페이지');
+    expect(map.getAttribute('data-ids')).toBe(markerIds);
+
+    await user.click(screen.getByRole('button', { name: '지도 보기' }));
+    await user.click(marker);
+    expect(screen.getByRole('button', { name: '목록 보기' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '검증 장소 50' })).toBeTruthy();
+    const detailLink = screen.getByRole('link', { name: '장소 상세 보기 →' });
+    const detail = new URL(detailLink.getAttribute('href')!, window.location.origin);
+    expect(detail.searchParams.get('id')).toBe('50');
+    expect(new URL(detail.searchParams.get('returnTo')!, window.location.origin).searchParams.get('page')).toBe('1');
+
+    await user.selectOptions(screen.getByRole('combobox', { name: '정렬' }), 'name-desc');
+    await screen.findByRole('heading', { name: '검증 장소 72' });
+    expect(map.getAttribute('data-ids')).toBe(markerIds);
+    expect(screen.getByRole('button', { name: '테스트 마커 50' })).toBe(marker);
+    const markerRequests = requests.filter(url => url.searchParams.get('size') === '50');
+    expect(markerRequests).toHaveLength(1);
+    expect(markerRequests[0].searchParams.get('page')).toBe('0');
+    expect(markerRequests[0].searchParams.get('south')).toBe('37.37');
+
+    await user.selectOptions(screen.getByRole('combobox', { name: '지역' }), '강원');
+    await waitFor(() => expect(requests.some(url => url.searchParams.get('size') === '50'
+      && url.searchParams.get('regionId') === '101')).toBe(true));
+  });
   it('필터 이름을 서버 ID와 코드로 바꾸고 검색 제출 전에는 검색어를 반영하지 않는다', async () => {
     const user = userEvent.setup(); mount();
     await screen.findByRole('heading', { name: '눈마루 리조트' });
@@ -136,13 +186,13 @@ describe('DB 장소 목록 화면', () => {
     expect(new URL(detail.searchParams.get('returnTo')!, window.location.origin).searchParams.get('level')).toBe('8');
   });
   it('새 지도 범위를 조회하면 진행 중인 이전 요청을 취소하고 마지막 결과를 표시한다', async () => {
-    const firstRequest = Promise.withResolvers<AbortSignal>();
+    const firstSignals = new Map<string, AbortSignal>();
     const releaseFirstResponse = Promise.withResolvers<void>();
     server.use(http.get(base, async ({ request }) => {
       const params = new URL(request.url).searchParams;
       const south = params.get('south');
       if (south === '37.37') {
-        firstRequest.resolve(request.signal);
+        firstSignals.set(params.get('size') ?? '', request.signal);
         await releaseFirstResponse.promise;
       }
       const items = south === '38.37' ? [rows[1]] : [rows[0]];
@@ -155,11 +205,11 @@ describe('DB 장소 목록 화면', () => {
 
     try {
       await user.click(screen.getByRole('button', { name: '테스트 지도 이동' }));
-      const signal = await firstRequest.promise;
+      await waitFor(() => expect([...firstSignals.keys()].sort()).toEqual(['20', '50']));
       expect(new URLSearchParams(window.location.search).get('page')).toBeNull();
       await user.click(screen.getByRole('button', { name: '다른 지도 범위로 이동' }));
 
-      await waitFor(() => expect(signal.aborted).toBe(true));
+      await waitFor(() => expect([...firstSignals.values()].every(signal => signal.aborted)).toBe(true));
       expect(await screen.findByRole('heading', { name: '파도 서프 스테이션' })).toBeTruthy();
       expect(screen.queryByRole('heading', { name: '눈마루 리조트' })).toBeNull();
     } finally {
