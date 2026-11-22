@@ -148,9 +148,10 @@ export default function PlaceExplorer() {
     return () => window.cancelAnimationFrame(frame);
   }, [listWindow.restore]);
 
-  function rememberPosition(event: MouseEvent<HTMLAnchorElement>, placeId: number) {
+  function openPlaceDetail(event: MouseEvent<HTMLAnchorElement>, placeId: number) {
     if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
-      rememberPlaceListPosition(placeId, visibleCount, selectedPlace?.id ?? null);
+      if (selection?.id !== placeId) setSelection({ id: placeId, source: 'list' });
+      rememberPlaceListPosition(placeId, visibleCount, placeId);
     }
   }
 
@@ -223,7 +224,7 @@ export default function PlaceExplorer() {
                       </div>
                     </button>
                     <PlacePhotoCredit place={place} />
-                    <Link className="outpick-detailLink" aria-label={`${place.name} 상세 보기`} href={getPlaceDetailUrl(place.id, listUrl)} onClick={event => rememberPosition(event, place.id)}>
+                    <Link className="outpick-detailLink" aria-label={`${place.name} 상세 보기`} href={getPlaceDetailUrl(place.id, listUrl)} onClick={event => openPlaceDetail(event, place.id)}>
                       상세 보기 <span aria-hidden="true">→</span>
                     </Link>
                   </article>
@@ -254,7 +255,7 @@ export default function PlaceExplorer() {
             <div className="outpick-mapSelection" aria-live="polite">
               <span>선택한 장소</span><h3>{selectedPlace.name}</h3>
               <p>{selectedPlace.address ?? '주소 미확인'}</p>
-              <Link className="outpick-detailLink" href={getPlaceDetailUrl(selectedPlace.id, listUrl)} onClick={event => rememberPosition(event, selectedPlace.id)}>장소 상세 보기 →</Link>
+              <Link className="outpick-detailLink" href={getPlaceDetailUrl(selectedPlace.id, listUrl)} onClick={event => openPlaceDetail(event, selectedPlace.id)}>장소 상세 보기 →</Link>
             </div>
           )}
         </aside>

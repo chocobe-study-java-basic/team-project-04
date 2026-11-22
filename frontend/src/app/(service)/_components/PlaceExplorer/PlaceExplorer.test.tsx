@@ -366,7 +366,7 @@ describe('DB 장소 목록 화면', () => {
     expect(input.value).toBe('');
     expect(window.location.search).toBe('');
   });
-  it('상세 복귀 시 캐시가 있으면 펼친 목록을 복원하고 캐시가 없으면 처음 10곳부터 표시한다', async () => {
+  it('카드의 상세를 열면 그 장소가 선택되고 복귀 시 목록과 선택을 복원한다', async () => {
     const results = Array.from({ length: 42 }, (_, index) => ({
       ...rows[0], id: index + 1, name: `복귀 장소 ${index + 1}`,
     }));
@@ -386,17 +386,18 @@ describe('DB 장소 목록 화면', () => {
     scrollToCard.mockClear();
     document.addEventListener('click', event => event.preventDefault(), { once: true });
     fireEvent.click(screen.getByRole('link', { name: '복귀 장소 35 상세 보기' }));
+    expect(screen.getByRole('button', { name: '테스트 마커 35' }).getAttribute('aria-pressed')).toBe('true');
     initial.unmount();
 
     const returned = mount(client);
-    const restoredCard = await screen.findByRole('heading', { name: '복귀 장소 35' });
+    const restoredCard = await screen.findByRole('heading', { name: '복귀 장소 35', level: 2 });
     expect(within(screen.getByRole('list', { name: '장소 목록' })).getAllByRole('listitem')).toHaveLength(40);
     await waitFor(() => expect(scrollTo).toHaveBeenCalled());
     expect(scrollToCard.mock.contexts).toContain(restoredCard.closest('article'));
-    expect(screen.getByRole('button', { name: '테스트 마커 1' }).getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByRole('button', { name: '테스트 마커 35' }).getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByRole('button', { name: '테스트 마커 1' }).getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByRole('button', { name: '테스트 마커 35' }).getAttribute('aria-pressed')).toBe('true');
     expect(within(screen.getByRole('list', { name: '장소 목록' }))
-      .getByRole('button', { name: /복귀 장소 1\s/ }).getAttribute('aria-pressed')).toBe('true');
+      .getByRole('button', { name: /복귀 장소 35\s/ }).getAttribute('aria-pressed')).toBe('true');
     expect(requests).toHaveLength(1);
     rememberPlaceListPosition(35, 40, 1);
     returned.unmount();
