@@ -30,13 +30,19 @@ describe('장소 목록과 상세 이동', () => {
     }
   );
 
-  it('현재 검색 조건에 해당하는 스크롤 위치만 한 번 복원한다', () => {
+  it('같은 목록 주소에서 상세를 연 장소, 선택한 장소, 스크롤 위치를 한 번 복원한다', () => {
     vi.stubGlobal('scrollY', 480);
-    rememberPlaceListPosition(35, 40);
+    rememberPlaceListPosition(35, 40, 1);
     expect(takePlaceListPosition('/?region=경기')).toBeNull();
     const url = `${window.location.pathname}${window.location.search}`;
-    expect(takePlaceListPosition(url)).toEqual({ placeId: 35, visibleCount: 40, y: 480 });
+    expect(takePlaceListPosition(url)).toEqual({ placeId: 35, selectedPlaceId: 1, visibleCount: 40, y: 480 });
     expect(takePlaceListPosition(url)).toBeNull();
+  });
+
+  it('선택 ID가 없는 기존 기록에서도 카드 수와 스크롤 위치를 복원한다', () => {
+    const url = '/?region=%EA%B0%95%EC%9B%90&season=%EA%B2%A8%EC%9A%B8';
+    sessionStorage.setItem('outpick:place-list-position', JSON.stringify({ url, placeId: 35, visibleCount: 40, y: 480 }));
+    expect(takePlaceListPosition(url)).toEqual({ placeId: 35, selectedPlaceId: null, visibleCount: 40, y: 480 });
   });
 
   it('브라우저 저장소 사용이 거부돼도 탐색을 막지 않는다', () => {

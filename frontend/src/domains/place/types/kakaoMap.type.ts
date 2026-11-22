@@ -3,7 +3,7 @@ export type KakaoLatLng = { getLat(): number; getLng(): number };
 export type PlaceMapBounds = { south: number; west: number; north: number; east: number };
 export type PlaceMapView = { lat: number; lng: number; level: number };
 export type PlaceMapItem = { id: number; name: string; latitude: number; longitude: number };
-export type PlaceMapSelection = { id: number; source: 'list' | 'map' };
+export type PlaceMapSelection = { id: number; source: 'list' | 'map' | 'restore' };
 export type KakaoBounds = {
   extend(position: KakaoLatLng): void;
   getSouthWest(): KakaoLatLng;

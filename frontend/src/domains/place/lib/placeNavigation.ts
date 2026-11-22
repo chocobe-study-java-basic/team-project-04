@@ -1,5 +1,5 @@
 const listPositionKey = 'outpick:place-list-position';
-type PlaceListPosition = { placeId: number; visibleCount: number; y: number };
+type PlaceListPosition = { placeId: number; selectedPlaceId: number | null; visibleCount: number; y: number };
 
 /** 복귀 주소는 사이트의 장소 목록(/)만 허용합니다. */
 export function getListReturnUrl(value: string | null) {
@@ -21,11 +21,12 @@ export function getPlaceDetailUrl(placeId: number, returnTo: string) {
 }
 
 /** 일반적인 같은 탭 이동 직전에만 호출하며, 브라우저 저장소가 막혀도 탐색은 유지합니다. */
-export function rememberPlaceListPosition(placeId: number, visibleCount: number) {
+export function rememberPlaceListPosition(placeId: number, visibleCount: number, selectedPlaceId: number | null = null) {
   try {
     sessionStorage.setItem(listPositionKey, JSON.stringify({
       url: getListReturnUrl(`${window.location.pathname}${window.location.search}`),
       placeId,
+      selectedPlaceId,
       visibleCount,
       y: window.scrollY,
     }));
@@ -47,7 +48,10 @@ export function takePlaceListPosition(url: string): PlaceListPosition | null {
       || !('placeId' in saved) || typeof saved.placeId !== 'number' || !Number.isSafeInteger(saved.placeId) || saved.placeId < 1
       || !('visibleCount' in saved) || typeof saved.visibleCount !== 'number'
       || !Number.isSafeInteger(saved.visibleCount) || saved.visibleCount < 1) return null;
-    return { placeId: saved.placeId, visibleCount: saved.visibleCount, y: saved.y };
+    const selectedId = 'selectedPlaceId' in saved ? saved.selectedPlaceId : null;
+    const selectedPlaceId = typeof selectedId === 'number' && Number.isSafeInteger(selectedId) && selectedId > 0
+      ? selectedId : null;
+    return { placeId: saved.placeId, selectedPlaceId, visibleCount: saved.visibleCount, y: saved.y };
   } catch {
     return null;
   }

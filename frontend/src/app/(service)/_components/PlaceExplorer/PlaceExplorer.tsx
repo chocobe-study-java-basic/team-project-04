@@ -18,6 +18,10 @@ type MapSearch = { from: string; to: string };
 type ListWindow = { key: string; count: number; restore?: NonNullable<ReturnType<typeof takePlaceListPosition>> };
 const cardBatchSize = 10;
 
+function countThroughCard(index: number) {
+  return Math.max(cardBatchSize, Math.ceil((index + 1) / cardBatchSize) * cardBatchSize);
+}
+
 function mapSearchKey(params: URLSearchParams) {
   const key = new URLSearchParams(params);
   key.delete('sort');
@@ -41,13 +45,11 @@ export default function PlaceExplorer() {
   const filters = { query: search, category, region, season, environment };
   const { catalog, places: placeQuery } = usePlaces(filters, mapBounds, activeMapSearch);
   const searchingArea = activeMapSearch && placeQuery.fetchStatus !== 'idle';
-  if (mapSearch && (activeMapSearch ? !searchingArea : mapSearch.from !== areaKey)) setMapSearch(null);
   const listIsPrevious = placeQuery.isPlaceholderData;
   const loading = catalog.isPending || placeQuery.isPending;
   const failed = catalog.isError || placeQuery.isError;
   const listKey = JSON.stringify([filters, mapBounds, sort]);
   const [listWindow, setListWindow] = useState<ListWindow>(() => ({ key: listKey, count: cardBatchSize }));
-  if (!listIsPrevious && listWindow.key !== listKey) setListWindow({ key: listKey, count: cardBatchSize });
   const categories = ['전체', ...(catalog.data?.categories.map(item => item.name) ?? [])];
   const locatedPlaces = useMemo(() => (placeQuery.data?.items ?? []).flatMap(place => {
     const { latitude, longitude } = place;
@@ -55,14 +57,29 @@ export default function PlaceExplorer() {
     return [{ ...place, name: place.name ?? '이름 미확인', latitude, longitude }];
   }), [placeQuery.data]);
   const places = useMemo(() => sort === 'name-desc' ? locatedPlaces.toReversed() : locatedPlaces, [locatedPlaces, sort]);
+  const selectedIndex = places.findIndex(place => place.id === selection?.id);
+  const selectedPlace = places[selectedIndex];
+  const selectedCardCount = countThroughCard(selectedIndex);
+  const mapSearchFinished = activeMapSearch && !searchingArea && placeQuery.isSuccess && !listIsPrevious;
+  if (mapSearchFinished) {
+    if (selection && !selectedPlace) setSelection(null);
+    setMapSearch(null);
+  } else if (mapSearch && !activeMapSearch && mapSearch.from !== areaKey) {
+    setMapSearch(null);
+  }
+
+  if (!listIsPrevious && listWindow.key !== listKey) {
+    setListWindow({ key: listKey, count: activeMapSearch ? selectedCardCount : cardBatchSize });
+  } else if (mapSearchFinished && selectedCardCount > listWindow.count) {
+    setListWindow({ ...listWindow, count: selectedCardCount });
+  }
   const visibleCount = Math.min(places.length, listWindow.count);
   const hasMore = visibleCount < places.length;
-  const selectedPlace = places.find(place => place.id === selection?.id);
 
   function selectMapMarker(nextSelection: PlaceMapSelection) {
     const index = places.findIndex(place => place.id === nextSelection.id);
     if (index < 0) return;
-    const count = Math.ceil((index + 1) / cardBatchSize) * cardBatchSize;
+    const count = countThroughCard(index);
     setListWindow(current => count > current.count ? { ...current, count } : current);
     setSelection(nextSelection);
     setMobileMap(false);
@@ -104,11 +121,17 @@ export default function PlaceExplorer() {
     if (loading || failed || listIsPrevious) return;
     const frame = window.requestAnimationFrame(() => {
       const restore = takePlaceListPosition(listUrl);
-      if (restore && !placeQuery.isFetchedAfterMount) {
-        const index = places.findIndex(place => place.id === restore.placeId);
-        if (index >= 0) {
-          setListWindow({ key: listKey, count: Math.max(restore.visibleCount, index + 1), restore });
-        }
+      if (!restore) return;
+      const selectedIndex = places.findIndex(place => place.id === restore.selectedPlaceId);
+      const restoredSelection = places[selectedIndex];
+      if (restoredSelection) setSelection({ id: restoredSelection.id, source: 'restore' });
+
+      const selectedCardCount = countThroughCard(selectedIndex);
+      const detailIndex = places.findIndex(place => place.id === restore.placeId);
+      if (!placeQuery.isFetchedAfterMount && detailIndex >= 0) {
+        setListWindow({ key: listKey, count: Math.max(restore.visibleCount, detailIndex + 1, selectedCardCount), restore });
+      } else if (restoredSelection) {
+        setListWindow(current => ({ ...current, count: Math.max(current.count, selectedCardCount) }));
       }
     });
     return () => window.cancelAnimationFrame(frame);
@@ -127,7 +150,7 @@ export default function PlaceExplorer() {
 
   function rememberPosition(event: MouseEvent<HTMLAnchorElement>, placeId: number) {
     if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
-      rememberPlaceListPosition(placeId, visibleCount);
+      rememberPlaceListPosition(placeId, visibleCount, selectedPlace?.id ?? null);
     }
   }
 

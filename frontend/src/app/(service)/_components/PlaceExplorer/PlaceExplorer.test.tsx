@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '../../../../../tests/setup-dom';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
@@ -13,19 +13,20 @@ import { rememberPlaceListPosition } from '@/domains/place/lib/placeNavigation';
 import type { PlaceMapBounds, PlaceMapItem, PlaceMapSelection, PlaceMapView } from '@/domains/place/types/kakaoMap.type';
 
 vi.mock('@/domains/place/components/KakaoPlaceMap/KakaoPlaceMap', () => ({
-  default: ({ places, totalPlaces, onBoundsChange, onSelect, view }: {
+  default: ({ places, totalPlaces, onBoundsChange, onSelect, view, selection }: {
     places: PlaceMapItem[];
     totalPlaces?: number;
     onBoundsChange: (bounds: PlaceMapBounds, view: PlaceMapView) => void;
     onSelect: (selection: PlaceMapSelection) => void;
     view: PlaceMapView | null;
+    selection: PlaceMapSelection | null;
   }) => (
     <div aria-label="테스트 지도" data-view={JSON.stringify(view)} data-ids={places.map(place => place.id).join(',')} data-total={totalPlaces}>
       <button onClick={() => onBoundsChange({ south: 37.37, north: 37.38, west: 128.39, east: 128.66 }, { lat: 37.375, lng: 128.525, level: 8 })}>테스트 지도 이동</button>
       <button onClick={() => onBoundsChange({ south: 38.37, north: 38.38, west: 128.39, east: 128.66 }, { lat: 38.375, lng: 128.525, level: 8 })}>다른 지도 범위로 이동</button>
       <button onClick={() => onBoundsChange({ south: 39.37, north: 39.38, west: 128.39, east: 128.66 }, { lat: 39.375, lng: 128.525, level: 8 })}>빈 지도 범위로 이동</button>
       {places.map(place => (
-        <button key={place.id} onClick={() => onSelect({ id: place.id, source: 'map' })}>테스트 마커 {place.id}</button>
+        <button key={place.id} aria-pressed={selection?.id === place.id} onClick={() => onSelect({ id: place.id, source: 'map' })}>테스트 마커 {place.id}</button>
       ))}
     </div>
   ),
@@ -245,6 +246,31 @@ describe('DB 장소 목록 화면', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: '테스트 마커 21' })).toBeNull());
   });
 
+  it('새 지도 결과에서 선택한 카드가 10개 밖으로 밀려도 선택을 유지하고 결과에서 빠지면 해제한다', async () => {
+    const otherPlaces = Array.from({ length: 10 }, (_, index) => ({
+      ...rows[0], id: index + 10, name: `새 영역 장소 ${index + 1}`,
+    }));
+    server.use(http.get(base, ({ request }) => {
+      const south = new URL(request.url).searchParams.get('south');
+      const items = south === '38.37' ? [...otherPlaces, rows[0]] : south === '39.37' ? [] : [rows[0]];
+      return HttpResponse.json({ items, page: 0, size: 50, totalElements: items.length });
+    }));
+    const user = userEvent.setup();
+    mount();
+    await user.click(await screen.findByRole('button', { name: /눈마루 리조트/ }));
+    await user.click(screen.getByRole('button', { name: '다른 지도 범위로 이동' }));
+    await screen.findByRole('heading', { name: '새 영역 장소 1' });
+    expect(screen.getByRole('button', { name: '테스트 마커 1' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: /눈마루 리조트/ }).getAttribute('aria-pressed')).toBe('true');
+    expect(scrollToCard).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: '빈 지도 범위로 이동' }));
+    await screen.findByRole('heading', { name: '조건에 맞는 장소가 없어요' });
+    await user.click(screen.getByRole('button', { name: '다른 지도 범위로 이동' }));
+    expect((await screen.findByRole('button', { name: '테스트 마커 1' })).getAttribute('aria-pressed')).toBe('false');
+    expect(screen.queryByRole('button', { name: /눈마루 리조트/ })).toBeNull();
+  });
+
   it('새 지도 범위를 조회하면 진행 중인 이전 요청을 취소하고 마지막 결과를 표시한다', async () => {
     const firstSignals = new Map<string, AbortSignal>();
     const releaseFirstResponse = Promise.withResolvers<void>();
@@ -351,9 +377,15 @@ describe('DB 장소 목록 화면', () => {
     const client = createQueryClient();
     client.setQueryDefaults(['places', 'list'], { staleTime: 0 });
     const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const user = userEvent.setup();
     const initial = mount(client);
-    await screen.findByRole('heading', { name: '복귀 장소 1' });
-    rememberPlaceListPosition(35, 40);
+    await user.click(await screen.findByRole('button', { name: '테스트 마커 35' }));
+    const selectedCard = within(screen.getByRole('list', { name: '장소 목록' }))
+      .getByRole('heading', { name: '복귀 장소 1' }).closest('article')!;
+    await user.click(within(selectedCard).getByRole('button'));
+    scrollToCard.mockClear();
+    document.addEventListener('click', event => event.preventDefault(), { once: true });
+    fireEvent.click(screen.getByRole('link', { name: '복귀 장소 35 상세 보기' }));
     initial.unmount();
 
     const returned = mount(client);
@@ -361,13 +393,18 @@ describe('DB 장소 목록 화면', () => {
     expect(within(screen.getByRole('list', { name: '장소 목록' })).getAllByRole('listitem')).toHaveLength(40);
     await waitFor(() => expect(scrollTo).toHaveBeenCalled());
     expect(scrollToCard.mock.contexts).toContain(restoredCard.closest('article'));
+    expect(screen.getByRole('button', { name: '테스트 마커 1' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: '테스트 마커 35' }).getAttribute('aria-pressed')).toBe('false');
+    expect(within(screen.getByRole('list', { name: '장소 목록' }))
+      .getByRole('button', { name: /복귀 장소 1\s/ }).getAttribute('aria-pressed')).toBe('true');
     expect(requests).toHaveLength(1);
-    rememberPlaceListPosition(35, 40);
+    rememberPlaceListPosition(35, 40, 1);
     returned.unmount();
     client.removeQueries({ queryKey: ['places', 'list'] });
 
     mount(client);
     await screen.findByRole('heading', { name: '복귀 장소 1' });
+    await waitFor(() => expect(screen.getByRole('button', { name: '테스트 마커 1' }).getAttribute('aria-pressed')).toBe('true'));
     expect(within(screen.getByRole('list', { name: '장소 목록' })).getAllByRole('listitem')).toHaveLength(10);
     expect(requests).toHaveLength(2);
   });
