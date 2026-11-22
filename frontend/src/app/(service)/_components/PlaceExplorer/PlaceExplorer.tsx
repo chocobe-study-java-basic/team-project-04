@@ -2,21 +2,27 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { changePlaceSearchFilters, defaultFilters, placeSearchFormId, readPlaceSearchParams, seasons } from './placeSearchParams';
 import PlacePhoto, { PlacePhotoCredit } from '@/domains/place/components/PlacePhoto/PlacePhoto';
 import CopyPlaceLinkButton from '@/domains/place/components/CopyPlaceLinkButton/CopyPlaceLinkButton';
 import KakaoPlaceMap from '@/domains/place/components/KakaoPlaceMap/KakaoPlaceMap';
 import type { PlaceMapBounds, PlaceMapSelection, PlaceMapView } from '@/domains/place/types/kakaoMap.type';
-import type { PlacePage } from '@/domains/place/types/placeApi.type';
-import { placeListPageSize } from '@/domains/place/api/placeApi';
 import { readPlaceMapBounds, readPlaceMapParams, writePlaceMapParams } from '@/domains/place/lib/placeMapParams';
 import { usePlaces } from '@/domains/place/hooks/usePlaces';
 import { getPlaceDetailUrl, rememberPlaceListPosition, takePlaceListPosition } from '@/domains/place/lib/placeNavigation';
 import './PlaceExplorer.css';
 
-type MapSearch = { from: string; to: string; initialMarkers?: PlacePage };
+type MapSearch = { from: string; to: string };
+type ListWindow = { key: string; count: number; restore?: NonNullable<ReturnType<typeof takePlaceListPosition>> };
+const cardBatchSize = 10;
+
+function mapSearchKey(params: URLSearchParams) {
+  const key = new URLSearchParams(params);
+  key.delete('sort');
+  return key.toString();
+}
 
 export default function PlaceExplorer() {
   const searchParams = useSearchParams();
@@ -25,37 +31,42 @@ export default function PlaceExplorer() {
   const [mobileMap, setMobileMap] = useState(false);
   const [mapSearch, setMapSearch] = useState<MapSearch | null>(null);
   const placeList = useRef<HTMLUListElement>(null);
+  const listEnd = useRef<HTMLDivElement>(null);
   const mapBounds = useMemo(() => readPlaceMapBounds(searchParams), [searchParams]);
   const paramsKey = searchParams.toString();
   const listUrl = `/${paramsKey ? `?${paramsKey}` : ''}`;
   const mapView = readPlaceMapParams(searchParams);
-  const rawPage = searchParams.get('page') ?? '0';
-  const page = /^\d+$/.test(rawPage) && Number(rawPage) <= 1000000 ? Number(rawPage) : 0;
-  const activeMapSearch = mapSearch?.to === paramsKey ? mapSearch : null;
-  const { catalog, places: placeQuery, markers: markerQuery } = usePlaces(
-    { query: search, category, region, season, environment, sort }, mapBounds, page, activeMapSearch
-  );
-  const searchingArea = !!activeMapSearch && (placeQuery.fetchStatus !== 'idle' || markerQuery.fetchStatus !== 'idle');
-  if (mapSearch && (activeMapSearch ? !searchingArea : mapSearch.from !== paramsKey)) setMapSearch(null);
+  const areaKey = mapSearchKey(searchParams);
+  const activeMapSearch = mapSearch?.to === areaKey;
+  const filters = { query: search, category, region, season, environment };
+  const { catalog, places: placeQuery } = usePlaces(filters, mapBounds, activeMapSearch);
+  const searchingArea = activeMapSearch && placeQuery.fetchStatus !== 'idle';
+  if (mapSearch && (activeMapSearch ? !searchingArea : mapSearch.from !== areaKey)) setMapSearch(null);
   const listIsPrevious = placeQuery.isPlaceholderData;
-  const displayedPage = placeQuery.data?.page ?? page;
   const loading = catalog.isPending || placeQuery.isPending;
   const failed = catalog.isError || placeQuery.isError;
+  const listKey = JSON.stringify([filters, mapBounds, sort]);
+  const [listWindow, setListWindow] = useState<ListWindow>(() => ({ key: listKey, count: cardBatchSize }));
+  if (!listIsPrevious && listWindow.key !== listKey) setListWindow({ key: listKey, count: cardBatchSize });
   const categories = ['전체', ...(catalog.data?.categories.map(item => item.name) ?? [])];
-  const places = useMemo(() => (placeQuery.data?.items ?? []).map(place => ({
-    ...place, name: place.name ?? '이름 미확인',
-  })), [placeQuery.data]);
-  // 첫 지도 범위를 잡기 전까지는 목록의 위치를 사용합니다.
-  const markerItems = mapBounds ? markerQuery.data?.items : placeQuery.data?.items;
-  const mapPlaces = useMemo(() => (markerItems ?? []).flatMap(place => place.latitude !== null && place.longitude !== null
-    ? [{ id: place.id, name: place.name ?? '이름 미확인', latitude: place.latitude, longitude: place.longitude }] : []), [markerItems]);
+  const locatedPlaces = useMemo(() => (placeQuery.data?.items ?? []).flatMap(place => {
+    const { latitude, longitude } = place;
+    if (latitude === null || longitude === null) return [];
+    return [{ ...place, name: place.name ?? '이름 미확인', latitude, longitude }];
+  }), [placeQuery.data]);
+  const places = useMemo(() => sort === 'name-desc' ? locatedPlaces.toReversed() : locatedPlaces, [locatedPlaces, sort]);
+  const visibleCount = Math.min(places.length, listWindow.count);
+  const hasMore = visibleCount < places.length;
   const selectedPlace = places.find(place => place.id === selection?.id);
-  const selectedMapPlace = selectedPlace ?? markerItems?.find(place => place.id === selection?.id);
 
-  const selectMapMarker = useCallback((nextSelection: PlaceMapSelection) => {
+  function selectMapMarker(nextSelection: PlaceMapSelection) {
+    const index = places.findIndex(place => place.id === nextSelection.id);
+    if (index < 0) return;
+    const count = Math.ceil((index + 1) / cardBatchSize) * cardBatchSize;
+    setListWindow(current => count > current.count ? { ...current, count } : current);
     setSelection(nextSelection);
-    if (placeList.current?.querySelector(`[data-place-id="${nextSelection.id}"]`)) setMobileMap(false);
-  }, []);
+    setMobileMap(false);
+  }
 
   useEffect(() => {
     if (selection?.source !== 'map') return;
@@ -71,38 +82,58 @@ export default function PlaceExplorer() {
     const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
     // 지도 이동은 현재 기록만 갱신해서 뒤로 가기에 지도 이동 기록이 쌓이지 않게 합니다.
     if (nextUrl === currentUrl) return;
-    setMapSearch({
-      from: currentParams.toString(),
-      to: params.toString(),
-      initialMarkers: readPlaceMapBounds(currentParams)
-        ? activeMapSearch?.initialMarkers
-        : placeQuery.data,
-    });
+    setMapSearch({ from: mapSearchKey(currentParams), to: mapSearchKey(params) });
     window.history.replaceState(null, '', nextUrl);
   }
 
   useEffect(() => {
+    const sentinel = listEnd.current;
+    if (!sentinel || listIsPrevious || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        setListWindow(current => current.key === listKey && current.count === visibleCount
+          ? { ...current, count: visibleCount + cardBatchSize }
+          : current);
+      }
+    });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, visibleCount, listIsPrevious, listKey, loading, failed]);
+
+  useEffect(() => {
     if (loading || failed || listIsPrevious) return;
-    const url = `${window.location.pathname}${window.location.search}`;
-    // Next.js의 화면 전환과 레이아웃 반영 뒤 목록의 이전 스크롤을 적용합니다.
     const frame = window.requestAnimationFrame(() => {
-      const y = takePlaceListPosition(url);
-      if (y !== null) window.scrollTo({ top: y, behavior: 'instant' });
+      const restore = takePlaceListPosition(listUrl);
+      if (restore && !placeQuery.isFetchedAfterMount) {
+        const index = places.findIndex(place => place.id === restore.placeId);
+        if (index >= 0) {
+          setListWindow({ key: listKey, count: Math.max(restore.visibleCount, index + 1), restore });
+        }
+      }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [loading, failed, listIsPrevious]);
+  }, [loading, failed, listIsPrevious, listUrl, listKey, places, placeQuery.isFetchedAfterMount]);
 
-  function rememberPosition(event: MouseEvent<HTMLAnchorElement>) {
+  useEffect(() => {
+    const restore = listWindow.restore;
+    if (!restore) return;
+    const frame = window.requestAnimationFrame(() => {
+      const card = placeList.current?.querySelector(`[data-place-id="${restore.placeId}"]`);
+      window.scrollTo({ top: restore.y, behavior: 'instant' });
+      card?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [listWindow.restore]);
+
+  function rememberPosition(event: MouseEvent<HTMLAnchorElement>, placeId: number) {
     if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
-      rememberPlaceListPosition();
+      rememberPlaceListPosition(placeId, visibleCount);
     }
   }
 
-  function changePage(nextPage: number) {
-    const params = new URLSearchParams(window.location.search);
-    if (nextPage === 0) params.delete('page');
-    else params.set('page', String(nextPage));
-    window.history.pushState(null, '', `${window.location.pathname}${params.size ? `?${params}` : ''}${window.location.hash}`);
+  function retrySearch() {
+    if (catalog.isError) void catalog.refetch();
+    else void placeQuery.refetch();
   }
 
   function resetFilters() {
@@ -154,9 +185,9 @@ export default function PlaceExplorer() {
           </div>
           {places.some(place => place.name?.startsWith('[데모]')) && <p className="outpick-sampleNotice">[데모] 표시는 가상 장소이며 실제 시설 정보가 아닙니다.</p>}
           <p className="outpick-sampleNotice" role="status">{searchingArea ? '이 영역의 장소를 찾는 중' : '지도를 이동하면 자동 검색해요.'}</p>
-          {failed ? <div className="outpick-empty" role="alert"><h2>장소를 불러오지 못했어요</h2><p>서버 연결을 확인하고 다시 시도해 주세요.</p><button type="button" onClick={() => { if (catalog.isError) void catalog.refetch(); else void placeQuery.refetch(); }}>다시 시도</button></div> : loading ? <p role="status">장소 정보를 조회하고 있어요.</p> : places.length > 0 ? (
+          {failed ? <div className="outpick-empty" role="alert"><h2>장소를 불러오지 못했어요</h2><p>서버 연결을 확인하고 다시 시도해 주세요.</p><button type="button" onClick={retrySearch}>다시 시도</button></div> : loading ? <p role="status">장소 정보를 조회하고 있어요.</p> : places.length > 0 ? (
             <ul ref={placeList} className="outpick-cards" aria-label="장소 목록">
-              {places.map(place => (
+              {places.slice(0, visibleCount).map(place => (
                 <li key={place.id}>
                   <article data-place-id={place.id} className={`outpick-placeCard ${selectedPlace?.id === place.id ? 'outpick-placeCardSelected' : ''}`}>
                     <button type="button" aria-pressed={selectedPlace?.id === place.id} className="outpick-card" onClick={() => setSelection({ id: place.id, source: 'list' })}>
@@ -165,12 +196,11 @@ export default function PlaceExplorer() {
                         <p className="outpick-location">{place.address ?? '주소 미확인'}</p>
                         <h2>{place.name}</h2>
                         <p className="outpick-description">상세에서 종목과 방문 정보를 확인해 보세요.</p>
-                        {place.latitude === null || place.longitude === null ? <p className="outpick-description">위치 미확인 · 지도에는 표시되지 않아요.</p> : null}
                         <span className="outpick-selectHint">{selectedPlace?.id === place.id ? '선택한 장소' : '장소 선택'} <span aria-hidden="true">↗</span></span>
                       </div>
                     </button>
                     <PlacePhotoCredit place={place} />
-                    <Link className="outpick-detailLink" aria-label={`${place.name} 상세 보기`} href={getPlaceDetailUrl(place.id, listUrl)} onClick={rememberPosition}>
+                    <Link className="outpick-detailLink" aria-label={`${place.name} 상세 보기`} href={getPlaceDetailUrl(place.id, listUrl)} onClick={event => rememberPosition(event, place.id)}>
                       상세 보기 <span aria-hidden="true">→</span>
                     </Link>
                   </article>
@@ -185,27 +215,23 @@ export default function PlaceExplorer() {
               <button type="reset" form={placeSearchFormId} onClick={resetFilters}>검색 필터 초기화</button>
             </div>
           )}
-          {!loading && !failed && (displayedPage > 0 || (placeQuery.data?.totalElements ?? 0) > placeListPageSize) && <nav className="outpick-pagination" aria-label="검색 결과 페이지">
-            <button type="button" disabled={listIsPrevious || displayedPage === 0} onClick={() => changePage(displayedPage - 1)}>이전</button>
-            <span>{displayedPage + 1}페이지</span>
-            <button type="button" disabled={listIsPrevious || (displayedPage + 1) * placeListPageSize >= (placeQuery.data?.totalElements ?? 0)} onClick={() => changePage(displayedPage + 1)}>다음</button>
-          </nav>}
+          {!loading && !failed && hasMore && <div ref={listEnd} aria-hidden="true" className="h-px" />}
           <footer className="outpick-footer">OUTPICK · 이번 주말, 밖에서 뭐 하지?</footer>
         </section>
 
         <aside aria-label="장소 지도" className={`outpick-mapPanel ${!mobileMap ? 'outpick-mapMobileHidden' : ''}`}>
-          <KakaoPlaceMap places={mapPlaces} totalPlaces={markerQuery.data?.totalElements} searchingArea={searchingArea} selection={selectedMapPlace ? selection : null} onSelect={selectMapMarker} onBoundsChange={changeMapBounds} view={mapView} hasSearchBounds={mapBounds !== null} />
-          {markerQuery.isError && (
+          <KakaoPlaceMap places={locatedPlaces} totalPlaces={placeQuery.data?.totalElements} searchingArea={searchingArea} selection={selectedPlace ? selection : null} onSelect={selectMapMarker} onBoundsChange={changeMapBounds} view={mapView} hasSearchBounds={mapBounds !== null} />
+          {failed && mobileMap && (
             <div className="outpick-mapMessage" role="alert">
               <p>지도에 표시할 장소를 불러오지 못했어요.</p>
-              <button type="button" onClick={() => void markerQuery.refetch()}>마커 다시 불러오기</button>
+              <button type="button" onClick={retrySearch}>다시 시도</button>
             </div>
           )}
-          {selectedMapPlace && (
+          {selectedPlace && (
             <div className="outpick-mapSelection" aria-live="polite">
-              <span>선택한 장소</span><h3>{selectedMapPlace.name ?? '이름 미확인'}</h3>
-              <p>{selectedMapPlace.address ?? '주소 미확인'}</p>
-              <Link className="outpick-detailLink" href={getPlaceDetailUrl(selectedMapPlace.id, listUrl)} onClick={rememberPosition}>장소 상세 보기 →</Link>
+              <span>선택한 장소</span><h3>{selectedPlace.name}</h3>
+              <p>{selectedPlace.address ?? '주소 미확인'}</p>
+              <Link className="outpick-detailLink" href={getPlaceDetailUrl(selectedPlace.id, listUrl)} onClick={event => rememberPosition(event, selectedPlace.id)}>장소 상세 보기 →</Link>
             </div>
           )}
         </aside>

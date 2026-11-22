@@ -51,7 +51,7 @@ export function writePlaceSearchParams(current: URLSearchParams, changes: Partia
 
 export const placeSearchFormId = 'place-search-form';
 
-/** 필터를 바꾸면 첫 페이지로 돌아가며 현재 스크롤 위치를 유지합니다. */
+/** 검색 조건을 URL에 반영하고 이전 검색 주소를 브라우저 기록에 남깁니다. */
 export function changePlaceSearchFilters(changes: Partial<PlaceSearchFilters>) {
   const { pathname, search, hash } = window.location;
   const params = writePlaceSearchParams(new URLSearchParams(search), changes);

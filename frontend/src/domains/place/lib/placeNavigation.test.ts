@@ -32,17 +32,17 @@ describe('장소 목록과 상세 이동', () => {
 
   it('현재 검색 조건에 해당하는 스크롤 위치만 한 번 복원한다', () => {
     vi.stubGlobal('scrollY', 480);
-    rememberPlaceListPosition();
+    rememberPlaceListPosition(35, 40);
     expect(takePlaceListPosition('/?region=경기')).toBeNull();
     const url = `${window.location.pathname}${window.location.search}`;
-    expect(takePlaceListPosition(url)).toBe(480);
+    expect(takePlaceListPosition(url)).toEqual({ placeId: 35, visibleCount: 40, y: 480 });
     expect(takePlaceListPosition(url)).toBeNull();
   });
 
   it('브라우저 저장소 사용이 거부돼도 탐색을 막지 않는다', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
-    expect(() => rememberPlaceListPosition()).not.toThrow();
+    expect(() => rememberPlaceListPosition(35, 40)).not.toThrow();
     expect(takePlaceListPosition('/')).toBeNull();
   });
 

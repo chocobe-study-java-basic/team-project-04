@@ -3,7 +3,7 @@
 import { hashKey, skipToken, useQuery } from '@tanstack/react-query';
 import { getPlaceCatalog, getPlaceDetail, searchPlaces } from '../api/placeApi';
 import { placeQueryKeys } from '../queries/placeQueryKeys';
-import type { PlacePage, PlaceSelection } from '../types/placeApi.type';
+import type { PlaceSelection } from '../types/placeApi.type';
 import type { PlaceMapBounds } from '../types/kakaoMap.type';
 
 export function usePlaceCatalog() {
@@ -11,37 +11,25 @@ export function usePlaceCatalog() {
 }
 
 export function usePlaces(
-  selection: PlaceSelection,
+  filters: Omit<PlaceSelection, 'sort'>,
   bounds: PlaceMapBounds | null,
-  page: number,
-  mapSearch: { initialMarkers?: PlacePage } | null
+  keepPreviousArea: boolean
 ) {
   const catalog = usePlaceCatalog();
   const { data: placeCatalog } = catalog;
-  const { sort, ...filters } = selection;
   const places = useQuery({
-    queryKey: [...placeQueryKeys.list(selection, bounds, page), placeCatalog] as const,
+    queryKey: [...placeQueryKeys.list(filters, bounds), placeCatalog] as const,
     queryFn: placeCatalog
-      ? ({ signal }) => searchPlaces({ ...filters, sort }, placeCatalog, bounds, { page }, signal)
+      ? ({ signal }) => searchPlaces(filters, placeCatalog, bounds, signal)
       : skipToken,
-    placeholderData: mapSearch ? (previous, query) => {
+    refetchOnMount: false,
+    placeholderData: keepPreviousArea ? (previous, query) => {
       if (!query) return undefined;
-      const [, , previousSelection, , , previousCatalog] = query.queryKey;
-      return hashKey([previousSelection, previousCatalog]) === hashKey([selection, placeCatalog]) ? previous : undefined;
-    } : undefined,
-  });
-  const markers = useQuery({
-    queryKey: [...placeQueryKeys.markers(filters, bounds), placeCatalog] as const,
-    queryFn: placeCatalog && bounds
-      ? ({ signal }) => searchPlaces({ ...filters, sort: 'name' }, placeCatalog, bounds, { page: 0, size: 50 }, signal)
-      : skipToken,
-    placeholderData: mapSearch ? (previous, query) => {
-      if (!query) return mapSearch.initialMarkers;
       const [, , previousFilters, , previousCatalog] = query.queryKey;
       return hashKey([previousFilters, previousCatalog]) === hashKey([filters, placeCatalog]) ? previous : undefined;
     } : undefined,
   });
-  return { catalog, places, markers };
+  return { catalog, places };
 }
 
 export function usePlaceDetail(id: number) {
