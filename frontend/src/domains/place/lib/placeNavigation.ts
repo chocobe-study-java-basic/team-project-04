@@ -21,14 +21,14 @@ export function getPlaceDetailUrl(placeId: number, returnTo: string) {
 }
 
 /** 일반적인 같은 탭 이동 직전에만 호출하며, 브라우저 저장소가 막혀도 탐색은 유지합니다. */
-export function rememberPlaceListPosition(placeId: number, visibleCount: number, selectedPlaceId: number | null = null) {
+export function rememberPlaceListPosition(placeId: number, visibleCount: number, selectedPlaceId: number | null = null, y = window.scrollY) {
   try {
     sessionStorage.setItem(listPositionKey, JSON.stringify({
       url: getListReturnUrl(`${window.location.pathname}${window.location.search}`),
       placeId,
       selectedPlaceId,
       visibleCount,
-      y: window.scrollY,
+      y,
     }));
   } catch {
     // 스크롤 복원 실패가 상세 이동을 막지 않도록 합니다.

@@ -366,7 +366,7 @@ describe('DB 장소 목록 화면', () => {
     expect(input.value).toBe('');
     expect(window.location.search).toBe('');
   });
-  it('카드의 상세를 열면 그 장소가 선택되고 복귀 시 목록과 선택을 복원한다', async () => {
+  it.each(['페이지', '목록'])('상세에서 복귀하면 %s의 스크롤 위치와 선택한 장소를 복원한다', async scrollArea => {
     const results = Array.from({ length: 42 }, (_, index) => ({
       ...rows[0], id: index + 1, name: `복귀 장소 ${index + 1}`,
     }));
@@ -376,13 +376,20 @@ describe('DB 장소 목록 화면', () => {
     }));
     const client = createQueryClient();
     client.setQueryDefaults(['places', 'list'], { staleTime: 0 });
-    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const pageScrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const paneScrollTo = vi.fn();
+    vi.stubGlobal('scrollY', 480);
     const user = userEvent.setup();
     const initial = mount(client);
     await user.click(await screen.findByRole('button', { name: '테스트 마커 35' }));
     const selectedCard = within(screen.getByRole('list', { name: '장소 목록' }))
       .getByRole('heading', { name: '복귀 장소 1' }).closest('article')!;
     await user.click(within(selectedCard).getByRole('button'));
+    if (scrollArea === '목록') {
+      const pane = screen.getByRole('region', { name: '이번 주말, 밖에서 뭐 하지?' });
+      pane.style.overflowY = 'auto';
+      pane.scrollTop = 920;
+    }
     scrollToCard.mockClear();
     document.addEventListener('click', event => event.preventDefault(), { once: true });
     fireEvent.click(screen.getByRole('link', { name: '복귀 장소 35 상세 보기' }));
@@ -390,9 +397,20 @@ describe('DB 장소 목록 화면', () => {
     initial.unmount();
 
     const returned = mount(client);
+    if (scrollArea === '목록') {
+      const pane = screen.getByRole('region', { name: '이번 주말, 밖에서 뭐 하지?' });
+      pane.style.overflowY = 'auto';
+      pane.scrollTo = paneScrollTo;
+    }
     const restoredCard = await screen.findByRole('heading', { name: '복귀 장소 35', level: 2 });
     expect(within(screen.getByRole('list', { name: '장소 목록' })).getAllByRole('listitem')).toHaveLength(40);
-    await waitFor(() => expect(scrollTo).toHaveBeenCalled());
+    if (scrollArea === '목록') {
+      await waitFor(() => expect(paneScrollTo).toHaveBeenCalledWith({ top: 920, behavior: 'instant' }));
+      expect(pageScrollTo).not.toHaveBeenCalled();
+    } else {
+      await waitFor(() => expect(pageScrollTo).toHaveBeenCalledWith({ top: 480, behavior: 'instant' }));
+      expect(paneScrollTo).not.toHaveBeenCalled();
+    }
     expect(scrollToCard.mock.contexts).toContain(restoredCard.closest('article'));
     expect(screen.getByRole('button', { name: '테스트 마커 1' }).getAttribute('aria-pressed')).toBe('false');
     expect(screen.getByRole('button', { name: '테스트 마커 35' }).getAttribute('aria-pressed')).toBe('true');

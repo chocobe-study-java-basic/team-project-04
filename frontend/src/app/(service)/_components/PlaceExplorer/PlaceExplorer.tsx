@@ -34,6 +34,7 @@ export default function PlaceExplorer() {
   const [selection, setSelection] = useState<PlaceMapSelection | null>(null);
   const [mobileMap, setMobileMap] = useState(false);
   const [mapSearch, setMapSearch] = useState<MapSearch | null>(null);
+  const resultsPane = useRef<HTMLElement>(null);
   const placeList = useRef<HTMLUListElement>(null);
   const listEnd = useRef<HTMLDivElement>(null);
   const mapBounds = useMemo(() => readPlaceMapBounds(searchParams), [searchParams]);
@@ -142,7 +143,10 @@ export default function PlaceExplorer() {
     if (!restore) return;
     const frame = window.requestAnimationFrame(() => {
       const card = placeList.current?.querySelector(`[data-place-id="${restore.placeId}"]`);
-      window.scrollTo({ top: restore.y, behavior: 'instant' });
+      const pane = resultsPane.current;
+      const options: ScrollToOptions = { top: restore.y, behavior: 'instant' };
+      if (pane && getComputedStyle(pane).overflowY === 'auto') pane.scrollTo(options);
+      else window.scrollTo(options);
       card?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     });
     return () => window.cancelAnimationFrame(frame);
@@ -151,7 +155,9 @@ export default function PlaceExplorer() {
   function openPlaceDetail(event: MouseEvent<HTMLAnchorElement>, placeId: number) {
     if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
       if (selection?.id !== placeId) setSelection({ id: placeId, source: 'list' });
-      rememberPlaceListPosition(placeId, visibleCount, placeId);
+      const pane = resultsPane.current;
+      const scrollTop = pane && getComputedStyle(pane).overflowY === 'auto' ? pane.scrollTop : window.scrollY;
+      rememberPlaceListPosition(placeId, visibleCount, placeId, scrollTop);
     }
   }
 
@@ -166,10 +172,10 @@ export default function PlaceExplorer() {
   }
 
   return (
-    <div className="outpick-explorer">
-      {searchParams.has('withdrawn') && <p className="outpick-accountNotice" role="status">회원 탈퇴가 완료되었습니다.</p>}
+    <div className="outpick-explorer md:flex md:min-h-0 md:flex-col">
+      {searchParams.has('withdrawn') && <p className="outpick-accountNotice md:shrink-0" role="status">회원 탈퇴가 완료되었습니다.</p>}
 
-      <div className="outpick-toolbar">
+      <div className="outpick-toolbar md:shrink-0">
         <nav aria-label="활동 카테고리" className="outpick-categories">
           {categories.map(item => (
             <button key={item} type="button" aria-pressed={category === item} onClick={() => changePlaceSearchFilters({ category: item })}>{item}</button>
@@ -190,8 +196,12 @@ export default function PlaceExplorer() {
         </div>
       </div>
 
-      <main className="outpick-content">
-        <section aria-labelledby="results-title" className={`outpick-results ${mobileMap ? 'outpick-mobileHidden' : ''}`}>
+      <main className="outpick-content md:min-h-0 md:flex-1">
+        <section
+          ref={resultsPane}
+          aria-labelledby="results-title"
+          className={`outpick-results md:overflow-y-auto md:overscroll-y-contain ${mobileMap ? 'outpick-mobileHidden' : ''}`}
+        >
           <div className="outpick-intro">
             <p className="outpick-eyebrow">EXPLORE THE OUTSIDE</p>
             <h1 id="results-title">이번 주말, 밖에서 뭐 하지?</h1>
