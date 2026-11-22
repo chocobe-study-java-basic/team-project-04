@@ -23,8 +23,10 @@
 .outpick-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 16px; list-style: none; padding: 0; }
 .outpick-cards li { min-width: 0; }
 .outpick-placeCard { display: flex; flex-direction: column; height: 100%; overflow: hidden; border: 1px solid #e8edf3; border-radius: 13px; transition: border-color .15s, box-shadow .15s; }
-.outpick-placeCard:hover { border-color: #aaa3ff; box-shadow: 0 6px 20px #2334570a; }
-.outpick-placeCardSelected { border-color: #5147ff; box-shadow: 0 0 0 1px #5147ff; }
+.outpick-placeCardSelected { border-color: #5147ff; box-shadow: 0 0 0 1px #5147ff, 0 6px 18px #23345724; }
+@media (hover: hover) {
+  .outpick-placeCard:not(.outpick-placeCardSelected):hover { border-color: #aaa3ff; box-shadow: 0 6px 18px #23345724; }
+}
 .outpick-card { width: 100%; flex: 1; background: #fff; text-align: left; }
 .outpick-detailLink { display: block; margin: 0 16px 16px; padding: 10px 0 0; border-top: 1px solid #edf0f4; color: #5147ff; font-size: 11px; text-decoration: none; }
 .outpick-detailLink span { float: right; }
