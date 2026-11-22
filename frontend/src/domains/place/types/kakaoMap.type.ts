@@ -19,7 +19,11 @@ export type KakaoMap = {
   relayout(): void;
   addControl(control: object, position: number): void;
 };
-export type KakaoOverlay = { setMap(map: KakaoMap | null): void; setZIndex(index: number): void };
+export type KakaoOverlay = {
+  setMap(map: KakaoMap | null): void;
+  setPosition(position: KakaoLatLng): void;
+  setZIndex(index: number): void;
+};
 type KakaoMapEvent = 'idle' | 'bounds_changed' | 'dragstart' | 'zoom_start';
 export type KakaoMapsApi = {
   event: {

@@ -6,13 +6,14 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { samplePlaces } from '../../data/samplePlaces';
 import { loadKakaoMaps } from '../../lib/loadKakaoMaps';
-import type { KakaoMap, KakaoMapsApi } from '../../types/kakaoMap.type';
+import type { KakaoLatLng, KakaoMap, KakaoMapsApi } from '../../types/kakaoMap.type';
 import KakaoPlaceMap from './KakaoPlaceMap';
 
 vi.mock('../../lib/loadKakaoMaps', () => ({ loadKakaoMaps: vi.fn() }));
 
 function createFakeSdk() {
   let element: HTMLElement;
+  const setPosition = vi.fn<(position: KakaoLatLng) => void>();
   const handlers = new Map<string, () => void>();
   const map = {
     getLevel: vi.fn(() => 8),
@@ -51,10 +52,11 @@ function createFakeSdk() {
         if (value) element.appendChild(this.options.content);
         else this.options.content.remove();
       }
+      setPosition = setPosition;
       setZIndex() {}
     },
   } as unknown as KakaoMapsApi;
-  return { api, map, handlers };
+  return { api, map, handlers, setPosition };
 }
 
 beforeEach(() => {
@@ -107,6 +109,29 @@ describe('카카오 장소 지도', () => {
     view.rerender(<KakaoPlaceMap places={[]} selection={null} onSelect={onSelect} />);
     expect(screen.queryByRole('button', { name: '파도 서프 스테이션 지도에서 선택' })).toBeNull();
     expect(screen.queryByText('조건에 맞는 장소가 없어요.')).toBeNull();
+  });
+
+  it('다음 결과에도 있는 마커의 위치와 이름만 갱신하고 같은 버튼을 유지한다', async () => {
+    const { api, setPosition } = createFakeSdk();
+    vi.mocked(loadKakaoMaps).mockResolvedValue(api);
+    const onSelect = vi.fn();
+    const [shared, removed, added] = samplePlaces;
+    const view = render(<KakaoPlaceMap places={[shared, removed]} selection={null} onSelect={onSelect} />);
+    const marker = await screen.findByRole('button', { name: `${shared.name} 지도에서 선택` });
+    const updated = { ...shared, name: '갱신된 장소', latitude: shared.latitude + 0.01 };
+
+    view.rerender(<KakaoPlaceMap places={[updated, added]} selection={{ id: shared.id, source: 'map' }} onSelect={onSelect} />);
+    expect(screen.getByRole('button', { name: '갱신된 장소 지도에서 선택' })).toBe(marker);
+    expect(marker.getAttribute('aria-pressed')).toBe('true');
+    expect(setPosition).toHaveBeenCalledTimes(1);
+    expect(setPosition.mock.calls[0][0].getLat()).toBe(updated.latitude);
+    expect(screen.queryByRole('button', { name: `${removed.name} 지도에서 선택` })).toBeNull();
+    expect(screen.getByRole('button', { name: `${added.name} 지도에서 선택` })).toBeTruthy();
+
+    await userEvent.click(marker);
+    expect(onSelect).toHaveBeenCalledExactlyOnceWith({ id: shared.id, source: 'map' });
+    view.unmount();
+    expect(marker.isConnected).toBe(false);
   });
 
   it('화면 밖의 장소를 카드에서 선택하면 지도만 이동하고 이후 사용자가 움직일 때 검색한다', async () => {
