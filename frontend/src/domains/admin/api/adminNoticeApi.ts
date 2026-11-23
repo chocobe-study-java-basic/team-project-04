@@ -15,17 +15,37 @@ export async function getAdminNotices({ placeId, page, signal }: {
   return data;
 }
 
-export async function createNoticeDraft(placeId: number, input: AdminNoticeDraftInput): Promise<AdminNotice> {
-  const { data } = await apiClient.post<AdminNotice>(noticesPath(placeId), input, { headers: await csrfHeader() });
+export async function createNotice({ placeId, input, publicationRequestId }: {
+  placeId: number;
+  input: AdminNoticeDraftInput;
+  publicationRequestId?: string;
+}): Promise<AdminNotice> {
+  const { data } = await apiClient.post<AdminNotice>(noticesPath(placeId), input, {
+    params: publicationRequestId ? { publish: true, publicationRequestId } : undefined,
+    headers: await csrfHeader(),
+  });
   return data;
 }
 
-export async function updateNoticeDraft({ placeId, noticeId, input }: {
+export async function updateNotice({ placeId, noticeId, input, publish }: {
   placeId: number;
   noticeId: number;
   input: AdminNoticeDraftInput;
+  publish: boolean;
 }): Promise<AdminNotice> {
   const { data } = await apiClient.patch<AdminNotice>(`${noticesPath(placeId)}/${noticeId}`, input, {
+    params: publish ? { publish } : undefined,
+    headers: await csrfHeader(),
+  });
+  return data;
+}
+
+export async function changeNoticeVisibility({ placeId, noticeId, visible }: {
+  placeId: number;
+  noticeId: number;
+  visible: boolean;
+}): Promise<AdminNotice> {
+  const { data } = await apiClient.patch<AdminNotice>(`${noticesPath(placeId)}/${noticeId}/visibility`, { visible }, {
     headers: await csrfHeader(),
   });
   return data;

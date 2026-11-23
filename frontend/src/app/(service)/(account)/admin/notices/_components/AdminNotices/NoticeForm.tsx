@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createNoticeDraft, updateNoticeDraft } from '@/domains/admin/api/adminNoticeApi';
-import { adminNoticeListKey } from '@/domains/admin/queries/adminNoticeQueries';
+import { createNotice, updateNotice } from '@/domains/admin/api/adminNoticeApi';
+import { refreshNoticeQueries } from '@/domains/admin/queries/adminNoticeQueries';
 import type { AdminNotice, AdminNoticeDraftInput } from '@/domains/admin/types/adminNotice.type';
 import { usePlaceDetail } from '@/domains/place/hooks/usePlaces';
 import { ApiError } from '@/shared/lib/http/apiError';
@@ -24,10 +24,10 @@ type Props = {
   placeId: number;
   notice?: AdminNotice;
   onCancel: () => void;
-  onSaved: () => void;
+  onSaved: (published: boolean) => void;
 };
 
-export default function NoticeDraftForm({ placeId, notice, onCancel, onSaved }: Props) {
+export default function NoticeForm({ placeId, notice, onCancel, onSaved }: Props) {
   const queryClient = useQueryClient();
   const placeDetail = usePlaceDetail(placeId);
   const [title, setTitle] = useState(notice?.title ?? '');
@@ -39,6 +39,7 @@ export default function NoticeDraftForm({ placeId, notice, onCancel, onSaved }: 
   const [sourceUrl, setSourceUrl] = useState('');
   const [verifiedDate, setVerifiedDate] = useState('');
   const [formError, setFormError] = useState('');
+  const publicationRequestId = useRef<string | null>(null);
 
   const currentSource = notice?.source;
   const publicSources = placeDetail.data?.sources ?? [];
@@ -46,23 +47,33 @@ export default function NoticeDraftForm({ placeId, notice, onCancel, onSaved }: 
     ? [currentSource, ...publicSources.filter(source => source.sourceRecordId !== currentSource.sourceRecordId)]
     : publicSources;
   const selectedSource = availableSources.find(source => String(source.sourceRecordId) === sourceId);
+  const editingDraft = notice?.publishStatus === 'DRAFT';
   const save = useMutation({
-    mutationFn: (input: AdminNoticeDraftInput) => notice
-      ? updateNoticeDraft({ placeId, noticeId: notice.placeNoticeId, input })
-      : createNoticeDraft(placeId, input),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: adminNoticeListKey(placeId) });
-      onSaved();
+    mutationFn: ({ input, publish }: { input: AdminNoticeDraftInput; publish: boolean }) => {
+      if (notice) {
+        return updateNotice({ placeId, noticeId: notice.placeNoticeId, input, publish });
+      }
+      if (publish) {
+        publicationRequestId.current ??= crypto.randomUUID();
+        return createNotice({ placeId, input, publicationRequestId: publicationRequestId.current });
+      }
+      return createNotice({ placeId, input });
+    },
+    onSuccess: async (_, { publish }) => {
+      await refreshNoticeQueries(queryClient, placeId, publish || notice?.publishStatus === 'PUBLISHED');
+      onSaved(publish);
     },
   });
 
   const responseError = save.error instanceof ApiError ? save.error.details : null;
   const responseFields = responseError?.kind === 'http' ? responseError.fieldErrors : [];
-  const errorMessage = formError || (save.isError ? responseError?.message ?? '공지 초안을 저장하지 못했어요.' : '');
+  const errorMessage = formError || (save.isError ? responseError?.message ?? '공지를 저장하지 못했어요.' : '');
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (save.isPending) return;
+    const submitter = event.nativeEvent instanceof SubmitEvent ? event.nativeEvent.submitter : null;
+    const publish = submitter instanceof HTMLButtonElement && submitter.value === 'publish';
     save.reset();
     setFormError('');
 
@@ -85,7 +96,7 @@ export default function NoticeDraftForm({ placeId, notice, onCancel, onSaved }: 
         setFormError('공지에 연결할 출처를 선택해 주세요.');
         return;
       }
-      save.mutate({ ...input, sourceRecordId: selectedSource.sourceRecordId });
+      save.mutate({ input: { ...input, sourceRecordId: selectedSource.sourceRecordId }, publish });
       return;
     }
 
@@ -94,7 +105,7 @@ export default function NoticeDraftForm({ placeId, notice, onCancel, onSaved }: 
       setFormError('HTTP 또는 HTTPS 주소와 확인일을 입력해 주세요.');
       return;
     }
-    save.mutate({ ...input, source: { url, verifiedAt: `${verifiedDate}T00:00:00` } });
+    save.mutate({ input: { ...input, source: { url, verifiedAt: `${verifiedDate}T00:00:00` } }, publish });
   }
 
   return (
@@ -104,7 +115,7 @@ export default function NoticeDraftForm({ placeId, notice, onCancel, onSaved }: 
       className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6"
     >
       <h3 id="notice-editor-heading" ref={focusEditorHeading} tabIndex={-1} className="scroll-mt-28 text-base font-bold">
-        {notice ? '공지 초안 수정' : '공지 초안 작성'}
+        {notice ? editingDraft ? '공지 초안 수정' : '공지 수정' : '새 공지 작성'}
       </h3>
       <fieldset disabled={save.isPending} className="mt-4 min-w-0 space-y-4">
         <label className={label}>
@@ -194,8 +205,18 @@ export default function NoticeDraftForm({ placeId, notice, onCancel, onSaved }: 
         <div className="flex flex-wrap gap-2">
           <button type="submit" disabled={sourceMode === 'existing' && !selectedSource}
             className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:opacity-50">
-            {save.isPending ? '저장 중…' : '초안 저장'}
+            {save.isPending ? '저장 중…' : !notice || editingDraft ? '초안 저장' : '변경사항 저장'}
           </button>
+          {!notice || editingDraft ? (
+            <button
+              type="submit"
+              value="publish"
+              disabled={sourceMode === 'existing' && !selectedSource?.verifiedAt}
+              className="rounded-lg border border-indigo-600 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 focus-visible:outline-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              저장 후 공개
+            </button>
+          ) : null}
           <button type="button" onClick={onCancel}
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
             취소

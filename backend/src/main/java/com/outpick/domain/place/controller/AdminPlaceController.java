@@ -4,6 +4,7 @@ import com.outpick.domain.member.security.MemberSessionPrincipal;
 import com.outpick.domain.place.dto.AdminPlaceNoticePageResponse;
 import com.outpick.domain.place.dto.AdminPlaceNoticeRequest;
 import com.outpick.domain.place.dto.AdminPlaceNoticeResponse;
+import com.outpick.domain.place.dto.AdminPlaceNoticeVisibilityRequest;
 import com.outpick.domain.place.dto.AdminPlaceRequest;
 import com.outpick.domain.place.dto.AdminPlaceResponse;
 import com.outpick.domain.place.service.AdminPlaceService;
@@ -13,6 +14,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -59,17 +61,27 @@ public class AdminPlaceController {
 
     @PostMapping("/places/{placeId}/notices")
     @ResponseStatus(HttpStatus.CREATED)
-    public AdminPlaceNoticeResponse createNoticeDraft(
+    public AdminPlaceNoticeResponse createNotice(
             @PathVariable @Positive long placeId,
+            @RequestParam(defaultValue = "false") boolean publish,
+            @RequestParam(required = false) UUID publicationRequestId,
             @Valid @RequestBody AdminPlaceNoticeRequest request, Authentication authentication) {
-        return service.createNoticeDraft(memberId(authentication), placeId, request);
+        return service.createNotice(memberId(authentication), placeId, request, publish, publicationRequestId);
     }
 
     @PatchMapping("/places/{placeId}/notices/{noticeId}")
-    public AdminPlaceNoticeResponse updateNoticeDraft(
+    public AdminPlaceNoticeResponse updateNotice(
             @PathVariable @Positive long placeId, @PathVariable @Positive long noticeId,
+            @RequestParam(defaultValue = "false") boolean publish,
             @Valid @RequestBody AdminPlaceNoticeRequest request, Authentication authentication) {
-        return service.updateNoticeDraft(memberId(authentication), placeId, noticeId, request);
+        return service.updateNotice(memberId(authentication), placeId, noticeId, request, publish);
+    }
+
+    @PatchMapping("/places/{placeId}/notices/{noticeId}/visibility")
+    public AdminPlaceNoticeResponse changeNoticeVisibility(
+            @PathVariable @Positive long placeId, @PathVariable @Positive long noticeId,
+            @Valid @RequestBody AdminPlaceNoticeVisibilityRequest request, Authentication authentication) {
+        return service.changeNoticeVisibility(memberId(authentication), placeId, noticeId, request.visible());
     }
 
     private long memberId(Authentication authentication) {

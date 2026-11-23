@@ -77,10 +77,10 @@ it('검색한 장소에 새 출처로 초안을 등록하고 기존 출처로 �
   await user.click(screen.getByRole('button', { name: '검색' }));
   await user.click(await screen.findByRole('button', { name: /눈마루 리조트/ }));
   await screen.findByText('등록된 공지가 없어요.');
-  await user.click(screen.getByRole('button', { name: '새 공지 초안' }));
+  await user.click(screen.getByRole('button', { name: '새 공지' }));
 
-  const createForm = within(screen.getByRole('form', { name: '공지 초안 작성' }));
-  expect(document.activeElement).toBe(createForm.getByRole('heading', { name: '공지 초안 작성' }));
+  const createForm = within(screen.getByRole('form', { name: '새 공지 작성' }));
+  expect(document.activeElement).toBe(createForm.getByRole('heading', { name: '새 공지 작성' }));
   await user.type(createForm.getByRole('textbox', { name: '제목' }), createPayload.title);
   await user.type(createForm.getByRole('textbox', { name: '본문' }), createPayload.content);
   await user.type(createForm.getByRole('textbox', { name: '공식 출처 URL' }), createPayload.source.url);
@@ -108,4 +108,71 @@ it('검색한 장소에 새 출처로 초안을 등록하고 기존 출처로 �
   expect(await list.findByRole('heading', { name: '수정한 휴무 안내' })).toBeTruthy();
   expect(list.getByText(existingSource.url ?? '')).toBeTruthy();
   expect(patched).toEqual({ ...noticeFields, title: '수정한 휴무 안내', sourceRecordId: 51 });
+});
+
+it('즉시 공개 재시도에 요청 ID를 재사용하고 같은 공지를 숨기고 다시 공개한다', async () => {
+  const noticeUrl = `${api}/admin/places/9/notices`;
+  let notice: AdminNotice | null = null;
+  let originalRequestId: string | null = null;
+  server.use(
+    http.get(`${api}/places`, () => HttpResponse.json({ items: [place], page: 0, size: 8, totalElements: 1 })),
+    http.get(`${api}/places/9`, () => HttpResponse.json({ ...place, sources: [existingSource] })),
+    http.get(`${api}/auth/csrf`, () => HttpResponse.json({ headerName: 'X-CSRF-TOKEN', token: 'notice-test-token' })),
+    http.get(noticeUrl, () => HttpResponse.json({
+      items: notice ? [notice] : [],
+      page: 0,
+      size: 20,
+      totalElements: Number(notice !== null),
+    })),
+    http.post(noticeUrl, async ({ request }) => {
+      const params = new URL(request.url).searchParams;
+      expect(params.get('publish')).toBe('true');
+      const requestId = params.get('publicationRequestId');
+      expect(requestId).toMatch(/^[0-9a-f-]{36}$/i);
+      expect(await request.json()).toMatchObject({ title: '운영시간 안내', sourceRecordId: 51 });
+      if (!originalRequestId) {
+        originalRequestId = requestId;
+        return HttpResponse.error();
+      }
+      expect(requestId).toBe(originalRequestId);
+      notice = {
+        placeNoticeId: 7,
+        title: '운영시간 안내',
+        content: '오늘은 9시에 엽니다.',
+        validFrom: null,
+        validUntil: null,
+        publishStatus: 'PUBLISHED',
+        source: existingSource,
+      };
+      return HttpResponse.json(notice, { status: 201 });
+    }),
+    http.patch(`${noticeUrl}/7/visibility`, async ({ request }) => {
+      const body: unknown = await request.json();
+      if (!notice || typeof body !== 'object' || body === null || !('visible' in body) || typeof body.visible !== 'boolean') {
+        return new HttpResponse(null, { status: 400 });
+      }
+      notice = { ...notice, publishStatus: body.visible ? 'PUBLISHED' : 'HIDDEN' };
+      return HttpResponse.json(notice);
+    })
+  );
+  const user = userEvent.setup();
+  render(<QueryClientProvider client={createQueryClient()}><AdminNotices /></QueryClientProvider>);
+  await user.click(await screen.findByRole('button', { name: /눈마루 리조트/ }));
+  await user.click(screen.getByRole('button', { name: '새 공지' }));
+
+  const form = within(screen.getByRole('form', { name: '새 공지 작성' }));
+  await user.type(form.getByRole('textbox', { name: '제목' }), '운영시간 안내');
+  await user.type(form.getByRole('textbox', { name: '본문' }), '오늘은 9시에 엽니다.');
+  await user.click(form.getByRole('radio', { name: '기존 출처' }));
+  await user.selectOptions(await form.findByRole('combobox', { name: '연결할 출처' }), '51');
+  await user.click(form.getByRole('button', { name: '저장 후 공개' }));
+  await form.findByRole('alert');
+  await user.click(form.getByRole('button', { name: '저장 후 공개' }));
+
+  await screen.findByText('공지를 공개했어요.');
+  await user.click(screen.getByRole('button', { name: '운영시간 안내 숨기기' }));
+  await screen.findByText('공지를 숨겼어요.');
+  await user.click(screen.getByRole('button', { name: '운영시간 안내 재공개' }));
+  await screen.findByText('공지를 공개했어요.');
+  expect(screen.getByRole('button', { name: '운영시간 안내 숨기기' })).toBeTruthy();
 });

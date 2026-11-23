@@ -14,7 +14,9 @@ public interface PlaceNoticeRepository extends JpaRepository<PlaceNotice, Long> 
     @EntityGraph(attributePaths = "sourceRecord")
     Page<PlaceNotice> findAllByPlaceIdOrderByIdDesc(long placeId, Pageable pageable);
 
-    /** 초안 수정 중 같은 공지에 대한 쓰기 요청을 직렬화합니다. */
+    /** 공지 수정과 공개 상태 변경이 겹치면 한 요청이 끝난 뒤 다음 요청이 같은 공지를 읽습니다. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<PlaceNotice> findByIdAndPlaceId(long id, long placeId);
+
+    Optional<PlaceNotice> findByPlaceIdAndPublicationRequestId(long placeId, String publicationRequestId);
 }

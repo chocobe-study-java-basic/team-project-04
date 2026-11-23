@@ -2,16 +2,19 @@
 
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
-import { adminNoticeListQuery, noticePlaceSearchQuery } from '@/domains/admin/queries/adminNoticeQueries';
+import { changeNoticeVisibility } from '@/domains/admin/api/adminNoticeApi';
+import { adminNoticeListQuery, noticePlaceSearchQuery, refreshNoticeQueries } from '@/domains/admin/queries/adminNoticeQueries';
 import type { AdminNotice } from '@/domains/admin/types/adminNotice.type';
 import type { PlaceSummary } from '@/domains/place/types/placeApi.type';
-import NoticeDraftForm from './NoticeDraftForm';
+import { ApiError } from '@/shared/lib/http/apiError';
+import NoticeForm from './NoticeForm';
 
 const panel = 'rounded-2xl border border-slate-200 bg-white p-4 sm:p-6';
 const secondaryButton = 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:opacity-50';
 const statusLabel = { DRAFT: '초안', PUBLISHED: '공개', HIDDEN: '숨김' } satisfies Record<AdminNotice['publishStatus'], string>;
+const visibilityActionLabel = { DRAFT: '공개', PUBLISHED: '숨기기', HIDDEN: '재공개' } satisfies Record<AdminNotice['publishStatus'], string>;
 
 type Editor = { kind: 'new' } | { kind: 'edit'; notice: AdminNotice };
 
@@ -39,14 +42,30 @@ function Pagination({ label, page, size, total, onPageChange }: {
 }
 
 function NoticeWorkspace({ place }: { place: PlaceSummary }) {
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [editor, setEditor] = useState<Editor | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [feedback, setFeedback] = useState('');
   const list = useQuery(adminNoticeListQuery(place.id, page));
+  const visibility = useMutation({
+    mutationFn: ({ noticeId, visible }: { noticeId: number; visible: boolean }) =>
+      changeNoticeVisibility({ placeId: place.id, noticeId, visible }),
+    onSuccess: async (_, { visible }) => {
+      await refreshNoticeQueries(queryClient, place.id, true);
+      setFeedback(visible ? '공지를 공개했어요.' : '공지를 숨겼어요.');
+    },
+  });
+  const actionDisabled = editor !== null || visibility.isPending;
 
   function openEditor(next: Editor) {
-    setSaved(false);
+    setFeedback('');
+    visibility.reset();
     setEditor(next);
+  }
+
+  function changeVisibility(notice: AdminNotice) {
+    setFeedback('');
+    visibility.mutate({ noticeId: notice.placeNoticeId, visible: notice.publishStatus !== 'PUBLISHED' });
   }
 
   return (
@@ -56,11 +75,16 @@ function NoticeWorkspace({ place }: { place: PlaceSummary }) {
           <h2 className="text-xl font-bold break-words">{place.name || '이름 미확인'}</h2>
           {place.address ? <p className="mt-1 text-sm break-words text-slate-600">{place.address}</p> : null}
         </div>
-        <button type="button" className={secondaryButton} disabled={editor !== null} onClick={() => openEditor({ kind: 'new' })}>
-          새 공지 초안
+        <button type="button" className={secondaryButton} disabled={actionDisabled} onClick={() => openEditor({ kind: 'new' })}>
+          새 공지
         </button>
       </div>
-      {saved ? <p role="status" className="mb-4 text-sm font-semibold text-emerald-700">공지 초안을 저장했어요.</p> : null}
+      {feedback ? <p role="status" className="mb-4 text-sm font-semibold text-emerald-700">{feedback}</p> : null}
+      {visibility.isError ? (
+        <p role="alert" className="mb-4 text-sm text-red-700">
+          {visibility.error instanceof ApiError ? visibility.error.message : '공지 공개 상태를 변경하지 못했어요.'}
+        </p>
+      ) : null}
       <div className={editor ? 'grid items-start gap-4 xl:grid-cols-2' : 'grid gap-4'}>
         <section aria-label="공지 목록" className={`${panel} min-w-0`}>
           <h3 className="text-base font-bold">공지 목록</h3>
@@ -91,17 +115,28 @@ function NoticeWorkspace({ place }: { place: PlaceSummary }) {
                       <div><dt className="inline font-semibold">출처 </dt><dd className="inline">{notice.source.url || 'URL 미등록'}</dd></div>
                       <div><dt className="inline font-semibold">확인일 </dt><dd className="inline">{notice.source.verifiedAt?.slice(0, 10) ?? '미확인'}</dd></div>
                     </dl>
-                    {notice.publishStatus === 'DRAFT' ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
                       <button
                         type="button"
                         aria-label={`${notice.title || '제목 없음'} 수정`}
-                        className={`${secondaryButton} mt-3`}
-                        disabled={editor !== null}
+                        className={secondaryButton}
+                        disabled={actionDisabled}
                         onClick={() => openEditor({ kind: 'edit', notice })}
                       >
                         수정
                       </button>
-                    ) : null}
+                      <button
+                        type="button"
+                        aria-label={`${notice.title || '제목 없음'} ${visibilityActionLabel[notice.publishStatus]}`}
+                        className={secondaryButton}
+                        disabled={actionDisabled}
+                        onClick={() => changeVisibility(notice)}
+                      >
+                        {visibility.isPending && visibility.variables.noticeId === notice.placeNoticeId
+                          ? '변경 중…'
+                          : visibilityActionLabel[notice.publishStatus]}
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -110,14 +145,17 @@ function NoticeWorkspace({ place }: { place: PlaceSummary }) {
           ) : null}
         </section>
         {editor ? (
-          <NoticeDraftForm
+          <NoticeForm
             placeId={place.id}
             notice={editor.kind === 'edit' ? editor.notice : undefined}
             onCancel={() => setEditor(null)}
-            onSaved={() => {
+            onSaved={published => {
               if (editor.kind === 'new') setPage(0);
               setEditor(null);
-              setSaved(true);
+              setFeedback(published ? '공지를 공개했어요.'
+                : editor.kind === 'new' || editor.notice.publishStatus === 'DRAFT'
+                  ? '공지 초안을 저장했어요.'
+                  : '공지 변경사항을 저장했어요.');
             }}
           />
         ) : null}
