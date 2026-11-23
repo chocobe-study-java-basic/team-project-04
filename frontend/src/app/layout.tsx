@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="ko" className={pretendard.variable}>
-      <body>
+      <body className="mx-auto max-w-[1440px]">
         <QueryProvider>{children}</QueryProvider>
       </body>
     </html>
