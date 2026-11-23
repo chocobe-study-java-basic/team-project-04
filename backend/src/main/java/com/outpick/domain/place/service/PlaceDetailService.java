@@ -2,8 +2,10 @@ package com.outpick.domain.place.service;
 
 import com.outpick.domain.place.dto.PlaceActivityResponse;
 import com.outpick.domain.place.dto.PlaceDetailResponse;
+import com.outpick.domain.place.dto.PlaceNoticeResponse;
 import com.outpick.domain.place.dto.PlaceOperatingInfoResponse;
 import com.outpick.domain.place.entity.PlaceActivitySeason;
+import com.outpick.domain.place.entity.SourceRecord;
 import com.outpick.domain.place.exception.PlaceErrorCode;
 import com.outpick.domain.place.repository.PlaceDetailRepository;
 import com.outpick.global.error.BusinessException;
@@ -38,11 +40,17 @@ public class PlaceDetailService {
         var operatingInfo = info == null ? null : new PlaceOperatingInfoResponse(info.getOperatingHours(), info.getRestDays(),
                 info.getContactPhone(), info.getSourceUrl(), info.getCollectedAt(), info.getVerificationStatus().name(),
                 info.getVerifiedAt(), info.getReviewNote(), info.getOfficialSourceUrl(), info.getComparedAt());
+        var notices = repository.findActiveNotices(placeId, LocalDateTime.now(placeClock));
+        var activeNoticeSourceIds = notices.stream().map(PlaceNoticeResponse::sourceRecordId).collect(Collectors.toSet());
+        var sources = repository.findVerifiedSources(placeId).stream()
+                .filter(source -> !SourceRecord.VERIFIED_FIELD_NOTICE.equals(source.verifiedFields())
+                        || activeNoticeSourceIds.contains(source.sourceRecordId()))
+                .toList();
         return new PlaceDetailResponse(place.getId(), place.getName(), place.getNameAlias(), place.getIntroduce(),
                 place.getAddress(), place.getLatitude(), place.getLongitude(), place.getHomepage(), place.getOperationStatus(),
                 place.getReviewedAt(), image == null ? null : image.getUrl(),
                 image == null ? null : image.getAttribution(), image == null ? null : image.getSourceUrl(),
                 image == null ? null : image.getLicenseType(), activityResponses,
-                repository.findActiveNotices(placeId, LocalDateTime.now(placeClock)), repository.findVerifiedSources(placeId), operatingInfo);
+                notices, sources, operatingInfo);
     }
 }

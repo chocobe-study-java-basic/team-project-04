@@ -70,4 +70,13 @@ public class PlaceNotice {
         this.validUntil = validUntil;
         this.publishStatus = publishStatus == null ? PlacePublishStatus.DRAFT : publishStatus;
     }
+
+    public void revise(SourceRecord sourceRecord, String title, String content,
+                       LocalDateTime validFrom, LocalDateTime validUntil) {
+        this.sourceRecord = Objects.requireNonNull(sourceRecord, "sourceRecord");
+        this.title = title;
+        this.content = content;
+        this.validFrom = validFrom;
+        this.validUntil = validUntil;
+    }
 }
