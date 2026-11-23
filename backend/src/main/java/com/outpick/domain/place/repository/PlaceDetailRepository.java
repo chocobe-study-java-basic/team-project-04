@@ -54,7 +54,7 @@ public class PlaceDetailRepository {
     public List<PlaceNoticeResponse> findActiveNotices(long placeId, LocalDateTime now) {
         return entityManager.createQuery("""
                 select new com.outpick.domain.place.dto.PlaceNoticeResponse(
-                    n.id, n.title, n.content, n.priority, n.validFrom, n.validUntil, s.id)
+                    n.id, n.title, n.content, n.validFrom, n.validUntil, s.id)
                 from PlaceNotice n join n.sourceRecord s
                 where n.place.id = :id and n.publishStatus = :published and s.verifiedAt is not null
                     and (n.validFrom is null or n.validFrom <= :now)

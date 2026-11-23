@@ -149,7 +149,9 @@ class PlaceDetailApiTests {
     void showsOnlyPublishedActiveNoticesWithVerifiedSources() throws Exception {
         mvc.perform(get("/api/v1/places/{id}", published.getId()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.notices", hasSize(2)))
-                .andExpect(jsonPath("$.notices[*].title", containsInAnyOrder("시작 경계", "기한 없음")));
+                .andExpect(jsonPath("$.notices[*].title", containsInAnyOrder("시작 경계", "기한 없음")))
+                .andExpect(jsonPath("$.notices[0].priority").doesNotHaveJsonPath())
+                .andExpect(jsonPath("$.notices[1].priority").doesNotHaveJsonPath());
     }
 
     @Test

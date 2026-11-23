@@ -43,9 +43,6 @@ public class PlaceNotice {
     @Column(name = "content", columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "priority", length = 10)
-    private String priority;
-
     @Column(name = "valid_from", columnDefinition = "DATETIME")
     private LocalDateTime validFrom;
 
@@ -62,7 +59,6 @@ public class PlaceNotice {
             SourceRecord sourceRecord,
             String title,
             String content,
-            String priority,
             LocalDateTime validFrom,
             LocalDateTime validUntil,
             PlacePublishStatus publishStatus) {
@@ -70,7 +66,6 @@ public class PlaceNotice {
         this.sourceRecord = Objects.requireNonNull(sourceRecord, "sourceRecord");
         this.title = title;
         this.content = content;
-        this.priority = priority;
         this.validFrom = validFrom;
         this.validUntil = validUntil;
         this.publishStatus = publishStatus == null ? PlacePublishStatus.DRAFT : publishStatus;
