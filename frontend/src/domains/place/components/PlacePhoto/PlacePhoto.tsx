@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import type { PlaceSummary } from '../../types/placeApi.type';
 import PlaceArtwork from '../PlaceArtwork/PlaceArtwork';
-import './PlacePhoto.css';
 
 export function getPlacePhoto(place: PlaceSummary) {
   try {
@@ -21,10 +20,10 @@ export function getPlacePhoto(place: PlaceSummary) {
 function RemotePlacePhoto({ url, name }: { url: string; name: string }) {
   const [failed, setFailed] = useState(false);
   if (failed) return <PlaceArtwork artwork="forest" />;
-  return <div className="outpick-placePhoto">
+  return <div className="aspect-[1.65] w-full overflow-hidden bg-[#f1f3f6]">
     {/* 원본을 변환·자르지 않고 표시한다. 변경금지 사진에도 동일하게 적용한다. */}
     {/* eslint-disable-next-line @next/next/no-img-element */}
-    <img src={url} alt={`${name} 시설 사진`} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+    <img className="block size-full object-contain" src={url} alt={`${name} 시설 사진`} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
   </div>;
 }
 
@@ -38,7 +37,7 @@ export function PlacePhotoCredit({ place }: { place: PlaceSummary }) {
   const photo = getPlacePhoto(place);
   if (!photo) return null;
   const type = photo.license === 'Type3' ? '3' : '1';
-  return <p className="outpick-photoCredit">
+  return <p className="mx-3 my-2 text-[11px]/[1.6] wrap-anywhere text-[#5b687d] [&>a]:text-[#4552a0] [&>a]:underline [&>a]:underline-offset-2">
     {photo.attribution} · <a href={photo.source} target="_blank" rel="noopener noreferrer">사진 출처</a> ·{' '}
     <a href={`https://www.kogl.or.kr/info/licenseType${type}.do`} target="_blank" rel="noopener noreferrer">공공누리 제{type}유형</a>
   </p>;

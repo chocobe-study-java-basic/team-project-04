@@ -7,7 +7,13 @@ import { currentMember, type Member } from '@/domains/member/api/memberApi';
 import { ApiError } from '@/shared/lib/http/apiError';
 import { createReview, deleteReview, deleteReviewPhoto, listReviews, photoUrl, reportReview,
   updateReview, uploadReviewPhoto, type Review } from '../../api/reviewApi';
-import './PlaceReviews.css';
+
+const actionButtonClassName = 'cursor-pointer rounded-[7px] border-0 px-3 py-2 disabled:cursor-default disabled:opacity-[.55]';
+const reviewButtonClassName = `${actionButtonClassName} bg-[#f0efff] text-[#5147d9]`;
+const photoAndReportButtonClassName = 'mt-[7px] cursor-pointer rounded-md border-0 bg-[#f0efff] px-[9px] py-[7px] text-[#5147d9]';
+const actionsClassName = 'mt-2.5 flex items-center justify-end gap-2.5';
+const emptyClassName = 'py-[18px] text-[13px] text-[#718096]';
+const messageClassName = 'my-3 rounded-lg px-3 py-2.5 text-[13px]';
 
 export default function PlaceReviews({ placeId }: { placeId: number }) {
   return <PlaceReviewsForPlace key={placeId} placeId={placeId} />;
@@ -106,50 +112,50 @@ function PlaceReviewsForPlace({ placeId }: { placeId: number }) {
     } finally { setBusy(false); }
   }
 
-  return <section className="outpick-reviews" aria-labelledby="place-reviews-title">
-    <div className="outpick-reviewsHeading"><div><p>VISIT STORIES</p><h2 id="place-reviews-title">이 장소의 후기</h2></div><span>{reviews.length}개</span></div>
+  return <section className="mt-6 border-t border-t-[#e9edf3] py-8 md:mt-[42px]" aria-labelledby="place-reviews-title">
+    <div className="mb-[22px] flex items-end justify-between gap-4"><div><p className="mb-2 text-[10px] font-extrabold tracking-[1.5px] text-[#6156ff]">VISIT STORIES</p><h2 id="place-reviews-title" className="text-[21px]">이 장소의 후기</h2></div><span className="text-[13px] text-[#718096]">{reviews.length}개</span></div>
     {loading ? <p role="status">후기를 불러오고 있어요.</p> : <>
-      {member ? <div className="outpick-reviewEditor">
-        <label htmlFor="review-body">{editingId === null ? '방문 후기 남기기' : '후기 수정하기'}</label>
-        <textarea id="review-body" value={body} maxLength={2000} rows={4}
+      {member ? <div className="rounded-[14px] border border-[#e4e7ef] bg-[#fafbff] p-[15px] md:p-5">
+        <label className="mb-2.5 block text-[14px] font-bold" htmlFor="review-body">{editingId === null ? '방문 후기 남기기' : '후기 수정하기'}</label>
+        <textarea className="w-full resize-y rounded-lg border border-[#d7deea] p-3 leading-[1.6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6156ff]" id="review-body" value={body} maxLength={2000} rows={4}
           placeholder="이 장소에서 경험한 내용을 적어 주세요." onChange={event => setBody(event.target.value)} />
-        <div className="outpick-reviewEditorActions"><span>{body.length}/2,000</span>
-          {editingId !== null && <button type="button" onClick={() => { setEditingId(null); setBody(''); }}>취소</button>}
-          <button type="button" disabled={busy || !body.trim()} onClick={() => void save()}>{busy ? '저장 중...' : editingId === null ? '후기 등록' : '수정 완료'}</button>
+        <div className={actionsClassName}><span className="text-[12px] text-[#8793a7]">{body.length}/2,000</span>
+          {editingId !== null && <button className={reviewButtonClassName} type="button" onClick={() => { setEditingId(null); setBody(''); }}>취소</button>}
+          <button className={`${actionButtonClassName} bg-[#5147ff] text-white`} type="button" disabled={busy || !body.trim()} onClick={() => void save()}>{busy ? '저장 중...' : editingId === null ? '후기 등록' : '수정 완료'}</button>
         </div>
-      </div> : memberCheckFailed ? <p className="outpick-reviewLogin">로그인 상태를 확인하지 못했어요. 연결 상태를 확인한 뒤 새로고침해 주세요.</p>
-        : <p className="outpick-reviewLogin">후기는 <Link href="/login/">로그인</Link> 후 작성할 수 있어요.</p>}
-      {error && <p className="outpick-reviewError" role="alert">{error}</p>}
-      {notice && <p className="outpick-reviewNotice" role="status">{notice}</p>}
-      {reviews.length ? <ul className="outpick-reviewList">{reviews.map(review => <li key={review.id}>
-        <div className="outpick-reviewMeta"><strong>{review.authorNickname}</strong><time dateTime={review.createdAt}>{review.createdAt.slice(0, 10)}</time></div>
-        <p>{review.body}</p>
-        {!!review.photos?.length && <div className="outpick-reviewPhotos">{review.photos.map(photo => <div key={photo.id}>
+      </div> : memberCheckFailed ? <p className={emptyClassName}>로그인 상태를 확인하지 못했어요. 연결 상태를 확인한 뒤 새로고침해 주세요.</p>
+        : <p className={emptyClassName}>후기는 <Link className="font-bold text-[#5147d9]" href="/login/">로그인</Link> 후 작성할 수 있어요.</p>}
+      {error && <p className={`${messageClassName} bg-[#fff0f1] text-[#ab303c]`} role="alert">{error}</p>}
+      {notice && <p className={`${messageClassName} bg-[#ecf8f2] text-[#267454]`} role="status">{notice}</p>}
+      {reviews.length ? <ul className="mt-[18px] list-none p-0">{reviews.map(review => <li key={review.id} className="border-b border-[#e9edf3] py-5">
+        <div className="flex items-center justify-between gap-3 text-[13px]"><strong>{review.authorNickname}</strong><time className="text-[12px] text-[#8793a7]" dateTime={review.createdAt}>{review.createdAt.slice(0, 10)}</time></div>
+        <p className="mt-3 text-sm/[1.7] wrap-anywhere whitespace-pre-wrap">{review.body}</p>
+        {!!review.photos?.length && <div className="mt-3.5 flex flex-wrap gap-2.5">{review.photos.map(photo => <div key={photo.id} className="w-28">
           <a href={photoUrl(photo)} target="_blank" rel="noopener noreferrer" aria-label="후기 사진 크게 보기">
-            <Image unoptimized src={photoUrl(photo)} alt="방문 후기 사진" width={photo.width} height={photo.height} />
+            <Image className="size-28 rounded-[9px] object-cover" unoptimized src={photoUrl(photo)} alt="방문 후기 사진" width={photo.width} height={photo.height} />
           </a>
-          {member?.id === review.authorId && <button type="button" disabled={busy}
+          {member?.id === review.authorId && <button className={photoAndReportButtonClassName} type="button" disabled={busy}
             onClick={() => void removePhoto(review.id, photo.id)}>사진 삭제</button>}
         </div>)}</div>}
-        {member?.id === review.authorId && <div className="outpick-reviewActions">
-          <button type="button" onClick={() => { setEditingId(review.id); setBody(review.body); setConfirmDeleteId(null); }}>수정</button>
-          {confirmDeleteId === review.id ? <><span>삭제할까요?</span><button type="button" disabled={busy} onClick={() => void remove(review.id)}>삭제 확인</button><button type="button" onClick={() => setConfirmDeleteId(null)}>취소</button></> :
-            <button type="button" onClick={() => setConfirmDeleteId(review.id)}>삭제</button>}
+        {member?.id === review.authorId && <div className={`${actionsClassName} text-[12px]`}>
+          <button className={reviewButtonClassName} type="button" onClick={() => { setEditingId(review.id); setBody(review.body); setConfirmDeleteId(null); }}>수정</button>
+          {confirmDeleteId === review.id ? <><span>삭제할까요?</span><button className={reviewButtonClassName} type="button" disabled={busy} onClick={() => void remove(review.id)}>삭제 확인</button><button className={reviewButtonClassName} type="button" onClick={() => setConfirmDeleteId(null)}>취소</button></> :
+            <button className={reviewButtonClassName} type="button" onClick={() => setConfirmDeleteId(review.id)}>삭제</button>}
         </div>}
-        {member?.id === review.authorId && (review.photos?.length ?? 0) < 3 && <label className="outpick-reviewPhotoAdd">
+        {member?.id === review.authorId && (review.photos?.length ?? 0) < 3 && <label className="mt-3 inline-block cursor-pointer rounded-[7px] bg-[#f0efff] px-2.5 py-2 text-[12px] text-[#5147d9]">
           사진 추가 (JPEG/PNG · 5MB 이하)
-          <input type="file" accept="image/jpeg,image/png" disabled={busy}
+          <input className="mt-1.5 block max-w-[190px] text-[11px]" type="file" accept="image/jpeg,image/png" disabled={busy}
             onChange={event => { void addPhoto(review.id, event.target.files); event.target.value = ''; }} />
         </label>}
-        {member && member.id !== review.authorId && <div className="outpick-reviewReport">
-          {reportingId === review.id ? <div><label htmlFor={`report-${review.id}`}>신고 사유</label>
-            <textarea id={`report-${review.id}`} value={reportReason} maxLength={500} rows={2}
+        {member && member.id !== review.authorId && <div className="mt-2.5 text-right text-[12px]">
+          {reportingId === review.id ? <div><label className="block text-left font-bold" htmlFor={`report-${review.id}`}>신고 사유</label>
+            <textarea className="mt-[7px] w-full resize-y rounded-[7px] border border-[#d7deea] p-[9px]" id={`report-${review.id}`} value={reportReason} maxLength={500} rows={2}
               onChange={event => setReportReason(event.target.value)} placeholder="문제가 되는 내용을 구체적으로 적어 주세요." />
-            <button type="button" disabled={busy || !reportReason.trim()} onClick={() => void sendReport(review.id)}>신고 접수</button>
-            <button type="button" onClick={() => { setReportingId(null); setReportReason(''); }}>취소</button></div>
-            : <button type="button" onClick={() => { setReportingId(review.id); setReportReason(''); }}>신고</button>}
+            <button className={photoAndReportButtonClassName} type="button" disabled={busy || !reportReason.trim()} onClick={() => void sendReport(review.id)}>신고 접수</button>
+            <button className={photoAndReportButtonClassName} type="button" onClick={() => { setReportingId(null); setReportReason(''); }}>취소</button></div>
+            : <button className={photoAndReportButtonClassName} type="button" onClick={() => { setReportingId(review.id); setReportReason(''); }}>신고</button>}
         </div>}
-      </li>)}</ul> : <p className="outpick-reviewEmpty">아직 등록된 후기가 없어요. 첫 후기를 남겨 주세요.</p>}
+      </li>)}</ul> : <p className={emptyClassName}>아직 등록된 후기가 없어요. 첫 후기를 남겨 주세요.</p>}
     </>}
   </section>;
 }

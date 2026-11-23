@@ -1,13 +1,18 @@
-export type ProfileMenuAudience = 'guest' | 'member' | 'admin';
+import { adminNavigationItems, commonNavigationItems, memberReportLink } from '../../navigation/accountNavigationItems';
 
-type ProfileMenuItem = {
+export type ProfileMenuAudience = 'guest' | 'account' | 'member' | 'admin';
+
+type ProfileMenuLink = {
   label: string;
   href: string;
-  visibleTo: readonly ProfileMenuAudience[];
 };
 
-export const profileMenuItems: readonly ProfileMenuItem[] = [
-  { label: '로그인', href: '/login/', visibleTo: ['guest'] },
-  { label: '마이페이지', href: '/mypage/', visibleTo: ['member', 'admin'] },
-  { label: '관리자 화면', href: '/admin/', visibleTo: ['admin'] },
-];
+export const profileMenuItems: Record<ProfileMenuAudience, readonly ProfileMenuLink[]> = {
+  guest: [
+    { label: '로그인', href: '/login/' },
+    { label: '회원가입', href: '/signup/' },
+  ],
+  account: commonNavigationItems,
+  member: [...commonNavigationItems, memberReportLink],
+  admin: [...commonNavigationItems, ...adminNavigationItems],
+};

@@ -64,7 +64,7 @@ tasks.register<JavaExec>("importPlaceOperatingInfo") {
 
 tasks.register<JavaExec>("importTourPlaces") {
 	group = "application"
-	description = "TourAPI 초기 후보 5곳을 로컬 DB에 검수 전 상태로 수집합니다."
+	description = "TourAPI 초기 후보 500곳을 로컬 DB에 검수 전 상태로 수집합니다."
 	classpath = sourceSets.main.get().runtimeClasspath
 	mainClass = "com.outpick.domain.place.importer.TourApiImportCommand"
 	systemProperty("spring.devtools.restart.enabled", "false")
