@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { environmentLabel, seasonLabel } from '@/domains/place/api/placeApi';
 import { adminPlaceDetailQuery } from '../../queries/adminPlacesQuery';
+import { placeSecondaryButton } from '../adminPlaceStyles';
 
 function focusHeading(heading: HTMLHeadingElement | null) {
   heading?.focus();
@@ -11,14 +12,14 @@ export default function AdminPlaceDetail({ placeId }: { placeId: number }) {
   const place = detail.data;
 
   return (
-    <div className="mt-4 space-y-5">
-      <h3 ref={focusHeading} tabIndex={-1} className="wrap-anywhere text-lg font-bold text-slate-900">장소 상세</h3>
+    <div className="mt-4 space-y-4 border-t border-slate-200 pt-4">
+      <h3 ref={focusHeading} tabIndex={-1} className="text-base font-bold">장소 상세</h3>
       {detail.isPending && <p role="status" className="text-sm text-slate-600">장소 상세를 불러오고 있어요.</p>}
       {detail.isError && (
-        <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
           <p role="alert" className="text-sm text-red-700">장소 상세를 불러오지 못했어요.</p>
           <button type="button" onClick={() => void detail.refetch()} disabled={detail.isFetching}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-indigo-600 disabled:opacity-50">
+            className={placeSecondaryButton}>
             다시 시도
           </button>
         </div>
