@@ -13,6 +13,10 @@ export async function getPlaceCatalog(signal?: AbortSignal): Promise<PlaceCatalo
   return (await apiClient.get<PlaceCatalog>('/api/v1/places/filters', { signal })).data;
 }
 
+export async function getPlacePage(params: URLSearchParams, signal?: AbortSignal): Promise<PlacePage> {
+  return (await apiClient.get<PlacePage>('/api/v1/places', { params, signal })).data;
+}
+
 export async function searchPlaces(
   selection: Omit<PlaceSelection, 'sort'>,
   catalog: PlaceCatalog,
@@ -32,7 +36,7 @@ export async function searchPlaces(
   if (selection.environment) params.set('environmentType', environmentCodes[selection.environment] ?? selection.environment);
   // 실제 지도 범위가 설정되기 전에도 좌표가 있는 장소만 조회합니다.
   Object.entries(bounds ?? allMapBounds).forEach(([key, value]) => params.set(key, String(value)));
-  return (await apiClient.get<PlacePage>('/api/v1/places', { params, signal })).data;
+  return getPlacePage(params, signal);
 }
 
 export async function getPlaceDetail(id: number, signal?: AbortSignal): Promise<PlaceDetailData> {
