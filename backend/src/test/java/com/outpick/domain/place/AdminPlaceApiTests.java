@@ -1,7 +1,11 @@
 package com.outpick.domain.place;
 
 import com.jayway.jsonpath.JsonPath;
+import com.outpick.domain.place.entity.ActivityCategory;
+import com.outpick.domain.place.entity.ActivityType;
 import com.outpick.domain.place.entity.Place;
+import com.outpick.domain.place.entity.PlaceActivity;
+import com.outpick.domain.place.entity.PlaceActivitySeason;
 import com.outpick.domain.place.entity.PlaceNotice;
 import com.outpick.domain.place.entity.PlacePublishStatus;
 import com.outpick.domain.place.entity.Region;
@@ -29,6 +33,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -61,30 +66,125 @@ class AdminPlaceApiTests {
     @Autowired JdbcTemplate jdbc;
 
     @Test
-    @DisplayName("운영자가 추가한 장소는 초안으로 저장되고 공개 검색에는 보이지 않는다")
+    @DisplayName("운영자가 등록한 장소 초안은 운영자 상세에서만 조회할 수 있다")
     void adminCreatesPrivateDraft() throws Exception {
         long regionId = regions.saveAndFlush(Region.builder().code("ADMIN-TEST").name("관리자 테스트 지역").build()).getId();
         var admin = login("admin@example.com", "12341234");
 
-        mvc.perform(post("/api/v1/admin/places").session(admin.session())
+        var created = mvc.perform(post("/api/v1/admin/places").session(admin.session())
                         .header(admin.header(), admin.token()).contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"regionId":%d,"name":"관리자 등록 장소","address":"테스트 주소",
                                  "description":"검토 전 초안","latitude":37.5,"longitude":127.1}
                                 """.formatted(regionId)))
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("DRAFT"));
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("DRAFT")).andReturn();
+        Number placeId = JsonPath.parse(created.getResponse().getContentAsString()).read("$.id");
 
         mvc.perform(get("/api/v1/admin/places").session(admin.session()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].name").value("관리자 등록 장소"));
+        mvc.perform(get("/api/v1/admin/places/{id}", placeId).session(admin.session()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.description").value("검토 전 초안"))
+                .andExpect(jsonPath("$.activities").isEmpty()).andExpect(jsonPath("$.sources").isEmpty());
         mvc.perform(get("/api/v1/places").param("query", "관리자 등록 장소"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/v1/places/{id}", placeId)).andExpect(status().isNotFound());
     }
 
     @Test
-    @DisplayName("일반 회원은 운영 현황과 장소 등록에 접근할 수 없다")
+    @DisplayName("운영자는 검수 전 장소를 ID 내림차순으로 조회하고 페이지를 이동할 수 있다")
+    void adminPagesAndFiltersDraftPlaces() throws Exception {
+        var region = regions.save(Region.builder().name("목록 테스트 지역").build());
+        var first = places.save(Place.builder().region(region).name("목록 첫 장소").build());
+        var second = places.save(Place.builder().region(region).name("목록 둘째 장소").nameAlias("Review_2").build());
+        places.save(Place.builder().region(region).name("목록 공개 장소").nameAlias("Review_3")
+                .publishStatus(PlacePublishStatus.PUBLISHED).build());
+        places.save(Place.builder().region(region).name("목록 숨김 장소")
+                .publishStatus(PlacePublishStatus.HIDDEN).build());
+        var admin = login("admin@example.com", "12341234");
+
+        mvc.perform(get("/api/v1/admin/places").param("status", "DRAFT").session(admin.session()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20)).andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.items.length()").value(2))
+                .andExpect(jsonPath("$.items[0].id").value(second.getId()))
+                .andExpect(jsonPath("$.items[0].status").value("DRAFT"));
+        mvc.perform(get("/api/v1/admin/places").param("status", "DRAFT").param("page", "1").param("size", "1")
+                        .session(admin.session()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.size").value(1)).andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(first.getId()));
+        mvc.perform(get("/api/v1/admin/places").param("query", " review_ ").param("status", "DRAFT")
+                        .session(admin.session()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(second.getId()));
+        mvc.perform(get("/api/v1/admin/places").param("query", "Review_3").session(admin.session()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].status").value("PUBLISHED"));
+        mvc.perform(get("/api/v1/admin/places").param("query", "review%").session(admin.session()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.items").isEmpty());
+        mvc.perform(get("/api/v1/admin/places").param("size", "51").session(admin.session()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("운영자는 검수 전 장소의 기본 정보와 종목, 확인 여부가 다른 출처를 조회할 수 있다")
+    void adminReadsDraftPlaceDetails() throws Exception {
+        var region = regions.save(Region.builder().name("상세 테스트 지역").build());
+        var place = places.save(Place.builder().region(region).name("수집된 검수 전 장소").nameAlias("수집 별칭")
+                .address("수집 주소").introduce("수집 소개").latitude(new BigDecimal("37.5"))
+                .longitude(new BigDecimal("127.1")).homepage("https://example.com").build());
+        var other = places.save(Place.builder().region(region).name("다른 장소").build());
+        var category = ActivityCategory.builder().name("수집 종목 분류").build();
+        entityManager.persist(category);
+        var type = ActivityType.builder().category(category).name("스키").build();
+        entityManager.persist(type);
+        var activity = PlaceActivity.builder().place(place).activityType(type).environmentType("OUTDOOR").build();
+        entityManager.persist(activity);
+        entityManager.persist(PlaceActivitySeason.builder().placeActivity(activity).season("WINTER").build());
+        entityManager.persist(PlaceActivity.builder().place(other).activityType(type).build());
+        sourceFor(place);
+        sources.saveAndFlush(SourceRecord.builder().place(place).type("TOUR_API")
+                .url("https://example.com/tour-api").build());
+        sourceFor(other);
+        entityManager.clear();
+        var admin = login("admin@example.com", "12341234");
+
+        mvc.perform(get("/api/v1/admin/places/{id}", place.getId()).session(admin.session()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(place.getId()))
+                .andExpect(jsonPath("$.name").value("수집된 검수 전 장소"))
+                .andExpect(jsonPath("$.nameAlias").value("수집 별칭"))
+                .andExpect(jsonPath("$.address").value("수집 주소"))
+                .andExpect(jsonPath("$.description").value("수집 소개"))
+                .andExpect(jsonPath("$.latitude").value(37.5))
+                .andExpect(jsonPath("$.longitude").value(127.1))
+                .andExpect(jsonPath("$.homepage").value("https://example.com"))
+                .andExpect(jsonPath("$.regionId").value(region.getId()))
+                .andExpect(jsonPath("$.regionName").value("상세 테스트 지역"))
+                .andExpect(jsonPath("$.status").value("DRAFT"))
+                .andExpect(jsonPath("$.activities.length()").value(1))
+                .andExpect(jsonPath("$.activities[0].activityTypeName").value("스키"))
+                .andExpect(jsonPath("$.activities[0].seasons[0]").value("WINTER"))
+                .andExpect(jsonPath("$.sources.length()").value(2))
+                .andExpect(jsonPath("$.sources[0].url").value("https://example.com/place"))
+                .andExpect(jsonPath("$.sources[0].verifiedAt").value("2026-11-21T00:00:00"))
+                .andExpect(jsonPath("$.sources[1].url").value("https://example.com/tour-api"))
+                .andExpect(jsonPath("$.sources[1].type").value("TOUR_API"))
+                .andExpect(jsonPath("$.sources[1].verifiedAt").doesNotExist());
+        mvc.perform(get("/api/v1/admin/places/{id}", Long.MAX_VALUE).session(admin.session()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("비로그인 사용자의 운영자 조회와 일반 회원의 운영자 조회·등록을 거절한다")
     void memberCannotUseAdminPlaces() throws Exception {
+        var place = publishedPlace("운영자 조회 권한 테스트 장소");
         var guest = mvc.perform(get("/api/v1/admin/dashboard"));
         guest.andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/admin/places").param("status", "DRAFT")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/admin/places/{id}", place.getId())).andExpect(status().isUnauthorized());
         var csrf = mvc.perform(get("/api/v1/auth/csrf")).andReturn();
         var session = (MockHttpSession) csrf.getRequest().getSession(false);
         var json = JsonPath.parse(csrf.getResponse().getContentAsString());
@@ -97,6 +197,10 @@ class AdminPlaceApiTests {
                 .andExpect(status().isCreated());
         var member = login("place-user@example.com", "password123");
         mvc.perform(get("/api/v1/admin/dashboard").session(member.session()))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/admin/places").param("status", "DRAFT").session(member.session()))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/admin/places/{id}", place.getId()).session(member.session()))
                 .andExpect(status().isForbidden());
         mvc.perform(post("/api/v1/admin/places").session(member.session())
                         .header(member.header(), member.token()).contentType(MediaType.APPLICATION_JSON)
